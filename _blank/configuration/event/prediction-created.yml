@@ -1,0 +1,5 @@
+enabled: true
+actions:
+- chat ; A new prediction has been created!
+- chat ; %title%
+- text ; prediction ; set ; %title%

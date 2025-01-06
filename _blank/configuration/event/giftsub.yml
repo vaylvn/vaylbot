@@ -1,0 +1,45 @@
+#!debug giftsub <user> <tier> <total-subs>
+single:
+    enabled: true
+    buffer: 9
+    actions:      
+    - obs:label ; USERLABEL ; text ; %gifter%
+    - obs:show ; BALL
+    - obs:show ; CROWN
+    - obs:label ; HOWMANY ; text ; x %sub-amount%
+    - obs:show ; HOWMANY
+    - announce ; swausaDANCE swausaDANCE %gifter% has subbed %gifted% to the channel! swausaDANCE swausaDANCE ; purple
+    - obs:show ; SUBALERT
+    - playsound ; alert2.mp3
+    - obs:show ; BOTTOMALERT
+    - obs:show ; USERLABEL
+    - wait ; 2
+    - obs:hide ; SUBALERT
+    - obs:hide ; USERLABEL 
+    - obs:hide ; CROWN
+    - obs:hide ; BOTTOMALERT
+    - obs:hide ; HOWMANY
+    - obs:hide ; BALL
+    
+multiple:
+    enabled: true
+    2:
+        buffer: 9
+        actions:      
+        - obs:label ; USERLABEL ; text ; %gifter%
+        - obs:show ; BALL
+        - obs:show ; CROWN
+        - obs:label ; HOWMANY ; text ; x %sub-amount%
+        - obs:show ; HOWMANY
+        - announce ; swausaDANCE swausaDANCE %gifter% has gifted %sub-amount% to the channel! swausaDANCE swausaDANCE ; purple
+        - obs:show ; SUBALERT
+        - playsound ; alert2.mp3
+        - obs:show ; BOTTOMALERT
+        - obs:show ; USERLABEL
+        - wait ; 2
+        - obs:hide ; SUBALERT
+        - obs:hide ; USERLABEL 
+        - obs:hide ; CROWN
+        - obs:hide ; BOTTOMALERT
+        - obs:hide ; HOWMANY
+        - obs:hide ; BALL

@@ -1,0 +1,68 @@
+reference: 
+    chat.moderation: Applying ModerationCheck to chat message.
+    chat.phrasecheck: Applying PhraseCheck to chat message.
+    chat.addquote: Attempting to add new quote.
+    obs.modifysource: Attempting to modify OBS source.
+    obs.scene: Attempting to switch OBS scene.
+    obs.label: Attempting to modify OBS label.
+    obs.image: Attempting to modify OBS image.
+    obs.mediafile: Attempting to modify OBS media file.
+    obs.slideshow: Attempting to modify OBS slideshow.
+    obs.filter: Attempting to access OBS source filter.
+    action.wait: Attempting to run "wait" action.
+    action.chat: Attempting to run "chat" action.
+    action.editfile: Attempting to run 'editfile' action.
+    action.text: Attempting to run 'text' action.
+    action.boolean: Attempting to run 'boolean' action.
+    action.oounter: Attempting to run 'counter' action.
+    action.list: Attempting to run 'list' action.
+    action.announce: Attempting to run 'announce' action.
+    action.vip: Attempting to run 'vip" action.
+    action.cmd: Attempting to run 'cmd' action.
+    action.playsound: Attempting to run 'playsound' action.
+    action.timeout: Attempting to run 'timeout' action.
+    action.console: Attempting to run 'console' action.
+    action.webhook: Attempting to run 'webhook' action.
+    action.conditional: Attempting to run 'conditional' action.
+    action.tts: Attempting to run 'tts' action.
+    action.variables: Attempting to format actiion variables.
+    vayl.prompt: Attempting to print in Vayl console.
+    vayl.updatevariable: Attempting to update Vayl variable.
+    vayl.issubbed: Attempting to check if user is subscribed.
+    vayl.ismoderator: Attempting to check if user is a moderator.
+    vayl.isstreamer: Attempting to check if user is the streamer.
+    load.sfx: Attempting to load SFX data.
+    load.moderation: Attempting to load Moderation data.
+    load.commands: Attempting to load Custom Commands.
+    load.timedactions: Attempting to load Timed Actions.
+    load.phrases: Attempting to load PhraseCheck
+    command.sfx: Attempting to run an SFX command.
+    command.sfxtoggle: Attempting to run '!sfxtoggle" command.
+    command.quote: Attempting to run '!quote' command.
+    command.quotes: Attempting to run '!quotes' command.
+    command.settitle: Attempting to run '!settitle' command.
+    command.setgame: Attempting to run '!setgame' command.
+    command.game: Attempting to run '!game' command.
+    command.uptime: Attempting to run '!uptime' command.
+    command.followage: Attempting to run '!followage' command.
+    command.custom: Attempting to run a custom command.
+    command.debug: Attempting to run '!debug' command.
+    command.reload: Attempting to run '!reload' command.
+    event.on_ready: Attempting to handle VaylReady event.
+    event.on_message: Attempting to handle Message event.
+    event.on_raid: Attempting to handle Raid event.
+    event.on_ad: Attempting to handle AD event.
+    event.on_shoutout_give: Attempting to handle ShoutoutGive event.
+    event.on_shoutout_receieve: Attempting to handle ShoutoutReceive event.
+    event.on_poll_start: Attempting to handle PollStart event.
+    event.on_poll_end: Attempting to handle PollEnd event.
+    event.on_prediction_start: Attempting to handle PredictionStart event.
+    event.on_prediction_lock: Attempting to handle PredictionLock event.
+    event.on_prediction_end: Attempting to handle PredictionEnd event.
+    event.on_hype_train: Attempting to handle HypeTrain event.
+    event.on_offline: Attempting to handle StreamOffline event.
+    event.on_online: Attempting to handle StreamOnline event.
+    event.on_follow: Attempting to handle Follow event.
+    event.on_sub: Attempting to handle Sub event.
+    event.on_bits: Attempting to handle Bit event.
+    event.on_redeem: Attempting to handle Redeem event.

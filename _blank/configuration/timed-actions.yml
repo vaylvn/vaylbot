@@ -1,0 +1,8 @@
+actions:
+    capybara:
+        max-iterations: 1
+        frequency: 10
+        actions:
+        - chat ; Did you know? 
+        - chat ; Capybara are the world's largest rodents?
+        

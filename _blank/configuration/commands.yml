@@ -1,0 +1,34 @@
+command:
+  vd:
+    cooldown:
+      user: 0
+      global: 5
+    streamer-only: false
+    sub-only: false
+    mod-only: false
+    vip-only: false
+    actions:
+    - webhook ; streamonline
+  8ball:
+    cooldown:
+      user: 0
+      global: 10
+    streamer-only: false
+    sub-only: false
+    mod-only: false
+    vip-only: false
+    actions:
+    - chat ; (づ◡﹏◡)づ ◯
+    - chat ; %rlist:8ball%
+  pp:
+    cooldown:
+      user: 0
+      global: 10
+    streamer-only: false
+    sub-only: false
+    mod-only: false
+    vip-only: false
+    actions:
+    - counter ; pp ; set ; %rnumber:1-12%
+    - chat ; 8%xstring:=:%counter:pp%%D
+    - chat ; %user%'s rocking a %counter:pp% inch pp!

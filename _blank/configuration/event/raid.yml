@@ -1,0 +1,19 @@
+enabled: true
+conditionals:
+    Default:
+        condition: User raids the channel
+        value: any
+        actions:
+        - chat ; message=Welcome %user% raiders!
+    Specific:
+        condition: User raids the channel
+        value: valonvn
+        actions:
+        - announce ; message=Welcome Valon Raiders!, color=purple
+    10Viewers:
+        condition: Raid contains at least ... viewers
+        value: 10
+        actions:
+        - announce ; message=Welcome %user% raiders!, color=purple
+        - chat ; message=woah... %viewercount% viewers? That's a little scary..
+        - playsound ; sound=test

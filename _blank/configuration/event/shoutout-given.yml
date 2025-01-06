@@ -1,0 +1,4 @@
+enabled: true
+actions:
+- announce ; Be sure to follow %user%!
+- chat ; Join %user% over at https://www.twitch.tv/%user% playing %user:%arg1%:game%! 

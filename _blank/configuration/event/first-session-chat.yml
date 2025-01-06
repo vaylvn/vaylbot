@@ -1,0 +1,16 @@
+enabled: true
+conditionals:
+    Default:
+        condition: User sends first message of session
+        value: any
+        actions:
+        - chat ; message=Welcome, %user%!
+    Specific:
+        condition: User sends first message of session
+        value: valonvn
+        actions:
+        - chat ; message=Welcome, Valon!
+user:
+  valonvn:
+    actions:
+    - chat ; Hey there, %user%!

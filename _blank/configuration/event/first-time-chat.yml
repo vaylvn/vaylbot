@@ -1,0 +1,4 @@
+enabled: true
+buffer: 3
+actions:
+- chat ; Welcome %user%!

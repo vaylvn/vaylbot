@@ -1,0 +1,6 @@
+redeem:
+  🎲 SWA'LAND - Turn & Token:
+    queue: true
+    buffer: 5
+    actions:
+    - chat ; it woooorked!

@@ -1,0 +1,4 @@
+enabled: true
+buffer: 5
+actions:
+- chat ; hello!

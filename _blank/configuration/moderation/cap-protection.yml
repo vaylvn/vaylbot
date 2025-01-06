@@ -1,0 +1,8 @@
+threshold-percentage: 80
+warning:
+    limit: 3
+    message: "%user%, please refrain from spamming caps."
+timeout:
+    duration: 60
+    message: "%user% has been timed out for %timeout-duration% for spamming caps."
+permitted-users: []

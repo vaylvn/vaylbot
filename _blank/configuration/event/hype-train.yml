@@ -1,0 +1,17 @@
+enabled: true
+conditionals:
+    Default:
+        condition: HypeTrain reaches level ...
+        value: any
+        actions:
+        - chat ; message=A HypeTrain has started!
+    Level 5:
+        condition: HypeTrain reaches level ...
+        value: 5
+        actions:
+        - announce ; message=We've reached a Level 5 HypeTrain!, color=purple
+    Over 5:
+        condition: HypeTrain reaches at least level ...
+        value: 6
+        actions:
+        - announce ; message=HypeTrain level %level%! Let's keep it going!, color=purple
