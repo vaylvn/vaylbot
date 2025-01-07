@@ -1,12 +1,11 @@
 url: ""
-message:
-- Hello there everyone!
+message: []
 embed:
   title: TITLE
   image-url: "https://i.ibb.co/GvBKvK3/image.png"
   thumbnail-url: "https://i.ibb.co/5ctPXKT/thumbnail.png"
   description: 
-  - "Hello there :purple_heart:"
+  - "%user% is live!"
   fields:
     enabled: true
     1:
