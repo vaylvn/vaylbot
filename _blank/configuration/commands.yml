@@ -1,5 +1,5 @@
 command:
-  vd:
+  vayltest:
     cooldown:
       user: 0
       global: 5
@@ -8,7 +8,7 @@ command:
     mod-only: false
     vip-only: false
     actions:
-    - webhook ; streamonline
+    - chat ; Test Complete!
   8ball:
     cooldown:
       user: 0
