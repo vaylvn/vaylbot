@@ -474,9 +474,9 @@ async def on_redeem (d, data):
         with open(os.getcwd() + "\\configuration\\redeems.yml", 'r', encoding = "utf-8") as file:
             redeem_data = yaml.safe_load(file)
             for redeems in redeem_data["redeem"].keys():
-                if redeems.lower() in redeem["reward"]["title"].lower():
-                    alert["actions"] = redeem_data["redeem"][redeems]["actions"]
-                    await addAlert(alert, "0" if redeem_data["redeem"][redeems]["queue"] else "end")
+                if redeem["reward"]["title"].lower() in redeem["reward"]["title"].lower():
+                    alert["actions"] = redeem_data["redeem"][redeem]["actions"]
+                    await addAlert(alert, "0" if redeem_data["redeem"][redeem]["queue"] else "end")
         
         await updateVariable("latest-redeem-user", redeem["user"]["display_name"])
         await updateVariable("latest-redeem-name", redeem["reward"]["title"])
