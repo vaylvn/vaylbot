@@ -745,36 +745,27 @@ async def c_sfx (cmd: ChatCommand):
             t = time.time()
             data = sv["sfx"]["sounds"][cmd.name.lower()]
             
+            allowed = await isStreamer(user)
             if t - sv["sfx"]["global-usage"][user] >= sv["sfx"]["global-cooldown"]:
-            
-                print ("cooldown a")
-            
                 if user not in data["last-use-user"]:
                     data["last-use-user"][user] = 0
-                    
                 if t - data["last-use-user"][user] >= data["global-cooldown"]:
-                    
-                    print ("cooldown b")
-                    
                     data["last-use-user"][user] = 0 if user not in data else data[user]
-                    
                     if t - data["last-use-user"][user] >= data["user-cooldown"]:
-                        
-                        print ("cooldown c")
-                    
-                        for type in [".mp3",".wav"]:
-                            try:
-                                if os.path.exists(os.getcwd() + "\\data\\resources\\sounds\\" + data["sound"] + type):
-                                    playsound(os.getcwd() + "\\data\\resources\\sounds\\" + data["sound"] + type, block = False)
-                                    print ("playsound " + type)
-                            except:
-                                pass
-                        #threading.Thread(target=playsound, args=(os.getcwd() + "\\data\\resources\\sounds\\" + data["sound"].replace(".mp3","").replace(".wav",""),), daemon=True).start()
-                                
-                        sv["sfx"]["global-usage"][user] = t
-                        data["last-use-user"][user] = t
-                        data["last-use-time"] = t
+                        allowed = True
                             
+            if allowed:
+                for type in [".mp3",".wav"]:
+                    try:
+                        if os.path.exists(os.getcwd() + "\\data\\resources\\sounds\\" + data["sound"] + type):
+                            playsound(os.getcwd() + "\\data\\resources\\sounds\\" + data["sound"] + type, block = False)
+                    except:
+                        pass
+                #threading.Thread(target=playsound, args=(os.getcwd() + "\\data\\resources\\sounds\\" + data["sound"].replace(".mp3","").replace(".wav",""),), daemon=True).start()
+                        
+                sv["sfx"]["global-usage"][user] = t
+                data["last-use-user"][user] = t
+                data["last-use-time"] = t
                         
                             
     except Exception as e:
