@@ -467,7 +467,7 @@ async def on_bits (d, data):
 async def on_redeem (d, data):
     try:
         redeem = data["data"]["redemption"]
-        alert = {"type":"redeem", "userid":redeem["user"]["id"], "user":redeem["user"]["display_name"], "userinput":"", "cost":redeem["cost"]}
+        alert = {"type":"redeem", "userid":redeem["user"]["id"], "user":redeem["user"]["display_name"], "userinput":"", "cost":redeem["reward"]["cost"]}
         if "user_input" in redeem:
             alert["user_input"] = redeem["user_input"]
             
@@ -718,42 +718,55 @@ async def c_sfxtoggle (cmd: ChatCommand):
 
 ## SFX =============================================================================
 async def c_sfx (cmd: ChatCommand):
+    global sv
     try:
-        if cmd.name in sv["sfx"]:
-            
+    
+        if cmd.name.lower() in sv["sfx"]["sounds"]:
+        
             with open(os.getcwd() + "\\configuration\\sfx.yml", 'r', encoding = "utf-8") as file:
                 s_data = yaml.safe_load(file)
                 if "enabled" in s_data and not s_data["enabled"]:
                     return
 
+            user = cmd.user.name
             if not await isStreamer(user):
-                if "streamer-only" in data and data["streamer-only"] == True:
+                if sv["sfx"]["sounds"][cmd.name.lower()]["streamer-only"] == True:
                     return
-                if "sub-only" in data and data["sub-only"] == True and not await isSubbed(user):
+                if sv["sfx"]["sounds"][cmd.name.lower()]["sub-only"] == True and not await isSubbed(user):
                     return
-                if "mod-only" in data and data["mod-only"] == True and not await isModerator(sv["streamer"], user):
+                if sv["sfx"]["sounds"][cmd.name.lower()]["mod-only"] == True and not await isModerator(sv["streamer"], user):
                     return
-                if "vip-only" in data and data["vip-only"] == True and not "vip" in cmd.user.badges:
+                if sv["sfx"]["sounds"][cmd.name.lower()]["vip-only"] == True and not "vip" in cmd.user.badges:
                     return
                     
-            user = cmd.user.name
+            
             sv["sfx"]["global-usage"][user] = 0 if user not in sv["sfx"]["global-usage"] else sv["sfx"]["global-usage"][user]
             
             t = time.time()
-            data = sv["sfx"]["sounds"][cmd.name]
+            data = sv["sfx"]["sounds"][cmd.name.lower()]
             
             if t - sv["sfx"]["global-usage"][user] >= sv["sfx"]["global-cooldown"]:
-                if t - data["last-use-time"][user] >= data["global-cooldown"]:
+            
+                print ("cooldown a")
+            
+                if user not in data["last-use-user"]:
+                    data["last-use-user"][user] = 0
+                    
+                if t - data["last-use-user"][user] >= data["global-cooldown"]:
+                    
+                    print ("cooldown b")
                     
                     data["last-use-user"][user] = 0 if user not in data else data[user]
                     
                     if t - data["last-use-user"][user] >= data["user-cooldown"]:
                         
+                        print ("cooldown c")
                     
                         for type in [".mp3",".wav"]:
                             try:
-                                if os.path.exists(os.getcwd() + "\\data\\resources\\sounds\\" + adata["sound"] + type):
-                                    playsound(os.getcwd() + "\\data\\resources\\sounds\\" + adata["sound"] + type, block = False)
+                                if os.path.exists(os.getcwd() + "\\data\\resources\\sounds\\" + data["sound"] + type):
+                                    playsound(os.getcwd() + "\\data\\resources\\sounds\\" + data["sound"] + type, block = False)
+                                    print ("playsound " + type)
                             except:
                                 pass
                         #threading.Thread(target=playsound, args=(os.getcwd() + "\\data\\resources\\sounds\\" + data["sound"].replace(".mp3","").replace(".wav",""),), daemon=True).start()
@@ -1742,7 +1755,7 @@ async def runActions (actions, variables):
                 except:
                     pass
                 adata["amount"] = float(adata["amount"])
-                modification = {"increase":(counter + adata["amount"]), "decreae":(counter - adata["amount"]), "multiply":(counter * adata["amount"]), "divide":(counter / adata["amount"]), "set":adata["amount"]}
+                modification = {"increase":(counter + adata["amount"]), "decrease":(counter - adata["amount"]), "multiply":(counter * adata["amount"]), "divide":(counter / adata["amount"]), "set":adata["amount"]}
                 counter = modification[adata["modifier"]]
                 counter = round(counter) if ".0" in str(round(counter, 1)) else round(counter, 1) 
                 with open(os.getcwd() + "\\data\\variables\\counter\\" + adata["name"] + ".txt", 'w', encoding = "utf-8") as file:
@@ -1888,6 +1901,8 @@ async def runActions (actions, variables):
                     data = yaml.safe_load(file)
                     
                     if adata["name"] in data["conditionals"]:
+                    
+                        
 
                         condition = data["conditionals"][adata["name"]]["condition"]
                         variable = data["conditionals"][adata["name"]]["variable"]
@@ -2180,6 +2195,7 @@ async def reload (chat):
     ## SFX =========================================================================
     try:
         sv["sfx"] = {}
+        sv["sfx"]["sounds"] = {}
         with open(os.getcwd() + "\\configuration\\sfx.yml", 'r', encoding = "utf-8") as file:
             data = yaml.full_load(file)
             
@@ -2187,6 +2203,7 @@ async def reload (chat):
             sv["sfx"]["global-usage"] = {}
             
             for sound in data["sounds"].keys():
+            
                 sv["chat"].register_command(sound.lower(), c_sfx)
                 s = data["sounds"][sound.lower()]
                 
@@ -2201,7 +2218,7 @@ async def reload (chat):
                 sd["mod-only"] = str(s["mod-only"]).lower()
                 sd["vip-only"] = str(s["vip-only"]).lower()
                 
-                sv["sfx"]["sounds"] = {}
+                
                 sv["sfx"]["sounds"][sound.lower()] = sd
     except:
         logError(tag = "load.sfx")
