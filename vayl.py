@@ -157,7 +157,7 @@ async def on_message (msg: ChatMessage):
                         
                 percentage = round(((cap_count / len(msg.text)) * 100))
                 if percentage >= sv["moderation"]["cap"]["threshold-percentage"]:
-                    if not await isModerator(sv["streamer"].id, name) and not await is_streamer(name) and name.lower() not in sv["moderation"]["link"]["permitted-users"]:
+                    if not await isModerator(sv["streamer"].id, name) and not await isStreamer(name) and name.lower() not in sv["moderation"]["link"]["permitted-users"]:
                         
                         if name not in sv["moderation"]["cap"]["warnings"]:
                             sv["moderation"]["cap"]["warnings"][name] = 0
@@ -474,7 +474,7 @@ async def on_redeem (d, data):
         with open(os.getcwd() + "\\configuration\\redeems.yml", 'r', encoding = "utf-8") as file:
             redeem_data = yaml.safe_load(file)
             for redeems in redeem_data["redeem"].keys():
-                if redeem["title"].lower() in redeem["reward"]["title"].lower():
+                if redeem["reward"]["title"].lower() in redeem["reward"]["title"].lower():
                     alert["actions"] = redeem_data["redeem"][redeem]["actions"]
                     await addAlert(alert, "0" if redeem_data["redeem"][redeem]["queue"] else "end")
         
