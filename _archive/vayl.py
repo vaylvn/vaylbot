@@ -62,7 +62,7 @@ tts_voice = { "cepstral"        : ["Allison", "Amy", "Belle", "Callie", "Charlie
 
 ## Bot Variables ===================================================================
 sv = { "id" : "xfc4596ekgo4ewkag6wn01hgs4hfbl", "secret" : "p8wl2zzuk3sgjmbdrlxe9l65xno8wk",
-       "version" : "2.0.4", "twitch" : None, "streamer" : None, "channel" : None, "chat" : None, "live" : False,
+       "version" : "2.0.5", "twitch" : None, "streamer" : None, "channel" : None, "chat" : None, "live" : False,
        "alerts" : [], "actions" : [], "commands" : {}, "sfx" : {}, "phrases" : {}, "moderation" : {}, "spoken" : [] }
 ## =================================================================================
 
@@ -239,12 +239,12 @@ async def on_message (msg: ChatMessage):
             ## first session chat ==========================================================
             if name not in sv["spoken"]:
                 sv["spoken"].append(name)
-                await addAlert({"type":"first-session-chat", "user":name},"0")
+                await addAlert({"type":"first-session-chat", "user":name, "message":msg.text},"0")
             ## =============================================================================
             
             ## first time chat =============================================================
             if "first-msg" in msg.__dict__["_parsed"]["tags"] and msg.__dict__["_parsed"]["tags"]["first-msg"] == "1":
-                await addAlert({"type":"first-time-chat", "user":name},"0")
+                await addAlert({"type":"first-time-chat", "user":name, "message":msg.text},"0")
             ## =============================================================================
             
         ## =============================================================================
@@ -835,6 +835,26 @@ async def manageAlertsAsync():
             
             alert = sv["alerts"][0]
             actions = []
+            
+            if "giftsub" in alert["type"]:
+                alert["amount"] = 1
+                for a in sv["alerts"][1:]:
+                    if a["type"] == "giftsub" and a["gifter"] == alert["gifter"]:
+                        alert["amount"] += 1
+                        pop_amount += 1
+
+            with open(os.getcwd() + "\\configuration\\event\\" + alert["type"] + ".yml", 'r', encoding = "utf-8") as file:
+                data = yaml.safe_load(file)
+                if "enabled" in data and data["enabled"] == True:
+                    actions = data["actions"]
+                    buffer = data["buffer"]
+                    
+                     
+                    
+            
+            
+            
+            continue
             
             ## generic =============================================================
             if alert["type"] in ["vayl-load", "ad-break", "prediction-created", "prediction-locked", "prediction-ended", "poll-created", "poll-ended", "first-time-chat", "stream-online", "stream-offline","chat", "follow"]:
@@ -1888,209 +1908,107 @@ async def runActions (actions, variables):
         ## conditional =============================================================
         if action == "conditional":
             try:
-                with open(os.getcwd() + "\\configuration\\conditional-actions.yml", 'r', encoding = "utf-8") as file:
-                    data = yaml.safe_load(file)
+            
+                data = {}
+                if ":" in adata["name"]:
+                    with open(os.getcwd() + "\\configuration\\conditionals\\" + adata["name"].split(":")[0] + ".yml", 'r', encoding = "utf-8") as file:
+                        data = yaml.safe_load(file)
+                        data = data[adata["name"].split(":")[1]]
+                else:
+                    with open(os.getcwd() + "\\configuration\\conditionals\\" + adata["name"] + ".yml", 'r', encoding = "utf-8") as file:
+                        data = yaml.safe_load(file)
+                
+                condition = data["condition"]
+                
+                for tag in variables:
+                    condition = condition.replace("[" + tag + "]", str(variables[tag]))
+                                          
+                if "[rfollower]" in condition:
+                    followers = []
+                    async for follower in await sv["twitch"].get_channel_followers(broadcaster_id=sv["streamer"].id):
+                        followers.append(follower.user_name)
+                    followers.remove("VaylBot")
                     
-                    if adata["name"] in data["conditionals"]:
-                        condition = data["conditionals"][adata["name"]]["condition"]
-                        
-                        for tag in variables:
-                            condition = condition.replace("%" + tag + "%", str(variables[tag]))
-                        
-                                                  
-                        if "[rfollower]" in condition:
-                            followers = []
-                            async for follower in await sv["twitch"].get_channel_followers(broadcaster_id=sv["streamer"].id):
-                                followers.append(follower.user_name)
-                            followers.remove("VaylBot")
-                            
-                            def randomFollower (match):
-                                return str(random.choice(followers))
-                            
-                            condition = re.sub(r"\[rfollower\]", randomFollower, condition)
+                    def randomFollower (match):
+                        return str(random.choice(followers))
+                    
+                    condition = re.sub(r"\[rfollower\]", randomFollower, condition)
 
-                        if "[ruser]" in condition:
-                            chatters = []
-                            async for chatter in await sv["twitch"].get_chatters(sv["streamer"].id, sv["streamer"].id):
-                                chatters.append(chatter.user_name)
-                            chatters.remove("VaylBot")
-                            condition = re.sub(r"\[ruser\]", str(random.choice(chatters)), condition)
-                            
-                        if "[system:dateus]" in condition:
-                            condition = re.sub(r"\[system:dateus\]", date.today().strftime("%m/%d/%y"), condition)
+                if "[ruser]" in condition:
+                    chatters = []
+                    async for chatter in await sv["twitch"].get_chatters(sv["streamer"].id, sv["streamer"].id):
+                        chatters.append(chatter.user_name)
+                    chatters.remove("VaylBot")
+                    condition = re.sub(r"\[ruser\]", str(random.choice(chatters)), condition)
+                    
+                if "[system:dateus]" in condition:
+                    condition = re.sub(r"\[system:dateus\]", date.today().strftime("%m/%d/%y"), condition)
 
-                        if "[system:dateuk]" in condition:
-                            condition = re.sub(r"\[system:dateuk\]", date.today().strftime("%d/%m/%y"), condition)
-                            
-                        if "[system:time]" in condition:
-                            condition = re.sub(r"\[system:time\]", datetime.now().strftime("%H:%M:%S"), condition)
-                            
-                        if "[uptime:seconds]" in word:
-                            uptime = streams.started_at.replace(tzinfo=pytz.UTC)
-                            now = datetime.now(tz=pytz.UTC)
-                            condition = re.sub(r"\[uptime:seconds\]", str(int((now - uptime).total_seconds())), condition)
+                if "[system:dateuk]" in condition:
+                    condition = re.sub(r"\[system:dateuk\]", date.today().strftime("%d/%m/%y"), condition)
+                    
+                if "[system:time]" in condition:
+                    condition = re.sub(r"\[system:time\]", datetime.now().strftime("%H:%M:%S"), condition)
+                    
+                if "[uptime:seconds]" in condition:
+                    uptime = streams.started_at.replace(tzinfo=pytz.UTC)
+                    now = datetime.now(tz=pytz.UTC)
+                    condition = re.sub(r"\[uptime:seconds\]", str(int((now - uptime).total_seconds())), condition)
+                
+                for word in condition.split(" "):
+                    if "[counter:" in word:
+                        with open(os.getcwd() + "\\data\\variables\\counter\\" + word.split("[counter:")[1][:-1] + ".txt", "r", encoding = "utf-8") as f:
+                            condition = condition.replace("[counter:" + word.split("[counter:")[1][:-1] + "]", f.read())
+                    
+                    if "[text:" in word:
+                        with open(os.getcwd() + "\\data\\variables\\text\\" + word.split("[text:")[1][:-1] + ".txt", "r", encoding = "utf-8") as f:
+                            condition = condition.replace("[text:" + word.split("[text:")[1][:-1] + "]", '"' + f.read() + '"')
                         
-                        for word in condition.split(" "):
-                            if "[counter:" in word:
-                                with open(os.getcwd() + "\\data\\variables\\counter\\" + word.split("[counter:")[1][:-1] + ".txt", "r", encoding = "utf-8") as f:
-                                    condition = condition.replace("[counter:" + word.split("[counter:")[1][:-1] + "]", f.read())
-                            
-                            if "[text:" in word:
-                                with open(os.getcwd() + "\\data\\variables\\text\\" + word.split("[text:")[1][:-1] + ".txt", "r", encoding = "utf-8") as f:
-                                    condition = condition.replace("[text:" + word.split("[text:")[1][:-1] + "]", '"' + f.read() + '"')
-                                
-                            if "[boolean:" in word:
-                                with open(os.getcwd() + "\\data\\variables\\boolean\\" + word.split("[boolean:")[1][:-1] + ".txt", "r", encoding = "utf-8") as f:
-                                    condition = condition.replace("[boolean:" + word.split("[boolean:")[1][:-1] + "]", f.read().capitalize())
+                    if "[boolean:" in word:
+                        with open(os.getcwd() + "\\data\\variables\\boolean\\" + word.split("[boolean:")[1][:-1] + ".txt", "r", encoding = "utf-8") as f:
+                            condition = condition.replace("[boolean:" + word.split("[boolean:")[1][:-1] + "]", f.read().capitalize())
 
-                            if "[list:" in word:
-                                with open(os.getcwd() + "\\data\\variables\\list\\" + word.split("[list:")[1][:-1] + ".txt", "r", encoding = "utf-8") as f:
-                                    condition = condition.replace("[list:" + word.split("[list:")[1][:-1] + "]", '["' + '", "'.join(f.read().splitlines()) + '"]')
+                    if "[list:" in word:
+                        with open(os.getcwd() + "\\data\\variables\\list\\" + word.split("[list:")[1][:-1] + ".txt", "r", encoding = "utf-8") as f:
+                            condition = condition.replace("[list:" + word.split("[list:")[1][:-1] + "]", '["' + '", "'.join(f.read().splitlines()) + '"]')
 
-                            def randomNumber (match):
-                                min_value = int(match.group(1))
-                                max_value = int(match.group(2))
-                                return str(random.randint(min_value, max_value))
+                    def randomNumber (match):
+                        min_value = int(match.group(1))
+                        max_value = int(match.group(2))
+                        return str(random.randint(min_value, max_value))
 
-                            if "[rnumber:" in word:
-                                min = word.split("[rnumber:")[1].split("-")[0]
-                                max = word.split("[rnumber:")[1].split("-")[1][:-1]
-                                condition = re.sub(r"\[rnumber:(\d+)-(\d+)\]", randomNumber, condition)
-      
-                            def randomList (match):
-                                name = match.group(1)
-                                with open(os.getcwd() + "\\data\\variables\\list\\" + name + ".txt", 'r', encoding = "utf-8") as f:
-                                    return str(random.choice(f.read().splitlines()))
-                                    
-                            if "[rlist:" in word:
-                                name = word.split("[rlist:")[1].split("]")[0]
-                                with open(os.getcwd() + "\\data\\variables\\list\\" + name + ".txt", 'r', encoding = "utf-8") as f:
-                                    data = f.read().splitlines()
-                                    condition = re.sub(r"\[rlist:([a-zA-Z0-9_]+)\]", randomList, condition)
+                    if "[rnumber:" in word:
+                        min = word.split("[rnumber:")[1].split("-")[0]
+                        max = word.split("[rnumber:")[1].split("-")[1][:-1]
+                        condition = re.sub(r"\[rnumber:(\d+)-(\d+)\]", randomNumber, condition)
 
-                            def repeatString (match):
-                                text = match.group(1)  # Extract the text part
-                                amount = int(match.group(2))  # Extract the amount as an integer
-                                return text * amount
+                    def randomList (match):
+                        name = match.group(1)
+                        with open(os.getcwd() + "\\data\\variables\\list\\" + name + ".txt", 'r', encoding = "utf-8") as f:
+                            return str(random.choice(f.read().splitlines()))
+                            
+                    if "[rlist:" in word:
+                        name = word.split("[rlist:")[1].split("]")[0]
+                        with open(os.getcwd() + "\\data\\variables\\list\\" + name + ".txt", 'r', encoding = "utf-8") as f:
+                            data = f.read().splitlines()
+                            condition = re.sub(r"\[rlist:([a-zA-Z0-9_]+)\]", randomList, condition)
 
-                            if "[xstring:" in word:
-                                string = word.split(":")[1]
-                                amount = word.split(":")[2].split("]")[0]
-                                condition = re.sub(r"\[xstring:([^\:]+):(\d+)\]", repeatString, condition)
+                    def repeatString (match):
+                        text = match.group(1)  # Extract the text part
+                        amount = int(match.group(2))  # Extract the amount as an integer
+                        return text * amount
 
+                    if "[xstring:" in word:
+                        string = word.split(":")[1]
+                        amount = word.split(":")[2].split("]")[0]
+                        condition = re.sub(r"\[xstring:([^\:]+):(\d+)\]", repeatString, condition)
 
-
-
-                        print ("condition: " + condition)
-                        print (eval(condition))
-
-                        continue
-                        
+                # print ("condition: " + condition)
+                # print (eval(condition))
+                
+                result = eval(condition)
+                await runActions(data[result], variables)
                             
-                        if "%uptime:%" in adata[key]:
-                            uptime = streams.started_at.replace(tzinfo=pytz.UTC)
-                            now = datetime.now(tz=pytz.UTC)
-                            days, remainder = divmod((now - uptime).total_seconds(), 86400)
-                            hours, remainder = divmod(remainder, 3600)
-                            minutes, remainder = divmod(remainder, 60)
-                            
-                            if "full" in adata[key]:
-                                adata[key] = adata[key].replace("%uptime:full%", ":".join([str(int(days)),str(int(hours)),str(int(minutes)),str(int(remainder))]))
-                            elif "seconds" in adata[key]:
-                                adata[key] = adata[key].replace("%uptime:seconds%", int((now - uptime).total_seconds()))
-                                    
-                                
-                                
-                                
-                        
-                        
-                  
-                  
-                        value = data["conditionals"][adata["name"]]["value"]
-                        
-                        
-                        
-                        
-                        datavalue = ""
-                        options = { "Counter":"counter", "Text":"text", "List":"list", "Boolean":"bool"}
-                        
-                        
-                        
-                        '''
-                        for option, tag in options.items():
-                            if option.lower() in condition.lower():
-                                with open(os.getcwd() + "\\data\\variables\\" + tag + "\\" + variable + ".txt", 'r', encoding = "utf-8") as file:
-                                    value = file.read()
-                        '''
-                        
-                        result = None
-                        
-                        if "uptime;full" in condition.lower():
-                            uptime = streams.started_at.replace(tzinfo=pytz.UTC)
-                            now = datetime.now(tz=pytz.UTC)
-                            days, remainder = divmod((now - uptime).total_seconds(), 86400)
-                            hours, remainder = divmod(remainder, 3600)
-                            minutes, remainder = divmod(remainder, 60)
-                            
-                            if "contains" in condition.lower():
-                                c = {"seconds" : value in str(int(remainder)), "minutes" : value in str(int(minutes)), "hours" : value in str(int(hours)), "days" : value in str(int(days))}
-                                for k,v in c.items():
-                                    if k in condition.lower():
-                                        result = v
-                            
-                                    
-                            result = (value in ":".join([str(int(days)),str(int(hours)),str(int(minutes)),str(int(remainder))]))
-                            
-                            
-                            
-                            if "equals" in condition.lower():
-                                result = value == ":".join([str(int(days)),str(int(hours)),str(int(minutes)),str(int(remainder))])
-                        
-                        if "uptime;seconds" in condition.lower():
-                            uptime = streams.started_at.replace(tzinfo=pytz.UTC)
-                            now = datetime.now(tz=pytz.UTC)
-                            seconds = int((now - uptime).total_seconds())
-                            
-                            c = { "equals" : (value == seconds), "less than" : (value < seconds), "less than or equal" : (value <= seconds), "more than or equal" : (value >= seconds), "more than" : (value > seconds) }
-                            for k,v in c.items():
-                                if k in condition.lower():
-                                    result = v
-                            
-                        if "time" in condition.lower():
-                            value = int(value)
-                            current_time = int(datetime.now().strftime("%H%M"))
-                            c = {"time is before":(current_time < value), "time is or before":(current_time <= value), "time equals":(current_time == value), "time is after":(current_time > value), "time is or after":(current_time >= value)}
-                            for k,v in c.items():
-                                if k in condition.lower():
-                                    result = v
-                                    
-                        if "counter" in condition.lower():
-                            value = int(value)
-                            variable = int(variable)
-                            c = {"less than value":(variable < value), "less than or equals value":(variable <= value), "equals value":(variable == value), "more than or equals value":(variable >= value), "more than value":(variable > value)}
-                            for k,v in c.items():
-                                if k in condition.lower():
-                                    result = v
-                                    
-                        if "text" in condition.lower():
-                            value = str(value)
-                            c = {"equals":(variable == value), "contains":(value in variable)}
-                            for k,v in c.items():
-                                if k in condition.lower():
-                                    result = v
-                                    
-                        if "list" in condition.lower():
-                            value = str(value)
-                            c = {"contains":(value in variable.splitlines())}
-                            for k,v in c.items():
-                                if k in condition.lower():
-                                    result = v
-                                    
-                        if "boolean" in condition.lower():
-                            result = variable == "True"
-                            
-                        if result is not None:
-                            await runActions(data["conditionals"][adata["name"]][result], variables)
             except Exception as e:
                 logError(tag = "action.conditional")
         ## =========================================================================
