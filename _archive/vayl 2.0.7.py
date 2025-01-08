@@ -62,7 +62,7 @@ tts_voice = { "cepstral"        : ["Allison", "Amy", "Belle", "Callie", "Charlie
 
 ## Bot Variables ===================================================================
 sv = { "id" : "xfc4596ekgo4ewkag6wn01hgs4hfbl", "secret" : "p8wl2zzuk3sgjmbdrlxe9l65xno8wk",
-       "version" : "2.0.8", "twitch" : None, "streamer" : None, "channel" : None, "chat" : None, "live" : False,
+       "version" : "2.0.7", "twitch" : None, "streamer" : None, "channel" : None, "chat" : None, "live" : False,
        "alerts" : [], "actions" : [], "commands" : {}, "sfx" : {}, "phrases" : {}, "moderation" : {}, "spoken" : [] }
 ## =================================================================================
 
@@ -1632,7 +1632,7 @@ async def runActions (actions, variables):
             try:
                 label = cl.get_input_settings(adata["source"]).__dict__
                 data = dict(label["input_settings"])
-                if "color" in adata and adata["color"] != "":
+                if "color" in default and adata["color"] != "":
                     color_string = str(adata["color"]).replace("0x","")
                     wcs = wrap(color_string, 2)
                     adata["color"] = "0x" + wcs[2] + wcs[1] + wcs[0]
