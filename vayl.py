@@ -62,7 +62,7 @@ tts_voice = { "cepstral"        : ["Allison", "Amy", "Belle", "Callie", "Charlie
 
 ## Bot Variables ===================================================================
 sv = { "id" : "xfc4596ekgo4ewkag6wn01hgs4hfbl", "secret" : "p8wl2zzuk3sgjmbdrlxe9l65xno8wk",
-       "version" : "2.0.5", "twitch" : None, "streamer" : None, "channel" : None, "chat" : None, "live" : False,
+       "version" : "2.0.6", "twitch" : None, "streamer" : None, "channel" : None, "chat" : None, "live" : False,
        "alerts" : [], "actions" : [], "commands" : {}, "sfx" : {}, "phrases" : {}, "moderation" : {}, "spoken" : [] }
 ## =================================================================================
 
@@ -135,7 +135,7 @@ async def on_message (msg: ChatMessage):
                             duration = int(sv["moderation"]["link"]["timeout"]["duration"])
                             
                             if len(sv["moderation"]["link"]["timeout"]["message"]) > 0:
-                                await sv["chat"].send_message(sv["channel"], sv["moderation"]["link"]["timeout"]["message"].replace("%user%",name).replace("%duration%",str(duration)))
+                                await sv["chat"].send_message(sv["channel"], sv["moderation"]["link"]["timeout"]["message"].replace("[user]",name).replace("[duration]",str(duration)))
                                 await sv["chat"].send_message(sv["channel"], "Warning " + str(sv["moderation"]["link"]["warnings"][name]) + " of " + str(sv["moderation"]["link"]["warning"]["limit"]))
                         
                             async for u in sv["twitch"].get_users(logins = [name]):
@@ -143,7 +143,7 @@ async def on_message (msg: ChatMessage):
                         
                         else:
                             if len(sv["moderation"]["link"]["warning"]["message"]) > 0:
-                                await sv["chat"].send_message(sv["channel"], sv["moderation"]["link"]["warning"]["message"].replace("%user%",name))
+                                await sv["chat"].send_message(sv["channel"], sv["moderation"]["link"]["warning"]["message"].replace("[user]",name))
 
                         await sv["twitch"].delete_chat_message(sv["streamer"].id, sv["streamer"].id, msg.id)
                 ## =========================================================================
@@ -169,7 +169,7 @@ async def on_message (msg: ChatMessage):
                             duration = int(sv["moderation"]["cap"]["timeout"]["duration"])
                             
                             if len(sv["moderation"]["cap"]["timeout"]["msg.text"]) > 0:
-                                await sv["chat"].send_message(sv["channel"], sv["moderation"]["cap"]["timeout"]["msg.text"].replace("%user%",name).replace("%duration%",str(duration)))
+                                await sv["chat"].send_message(sv["channel"], sv["moderation"]["cap"]["timeout"]["msg.text"].replace("[user]",name).replace("[duration]",str(duration)))
                                 await sv["chat"].send_message(sv["channel"], "Warning " + str(sv["moderation"]["cap"]["warnings"][name]) + " of " + str(sv["moderation"]["cap"]["warning"]["limit"]))
                         
                             async for u in sv["twitch"].get_users(logins = [name]):
@@ -177,7 +177,7 @@ async def on_message (msg: ChatMessage):
                         
                         else:
                             if len(sv["moderation"]["cap"]["warning"]["msg.text"]) > 0:
-                                await sv["chat"].send_message(sv["channel"], sv["moderation"]["cap"]["warning"]["msg.text"].replace("%user%",name))
+                                await sv["chat"].send_message(sv["channel"], sv["moderation"]["cap"]["warning"]["msg.text"].replace("[user]",name))
 
                         await sv["twitch"].delete_chat_message(sv["streamer"].id, sv["streamer"].id, msg.id)
                 ## =========================================================================
@@ -475,6 +475,7 @@ async def on_redeem (d, data):
             redeem_data = yaml.safe_load(file)
             for redeems in redeem_data["redeem"].keys():
                 if redeems.lower() in redeem["reward"]["title"].lower():
+                    alert["buffer"] = redeem_data["redeem"][redeems]["buffer"]
                     alert["actions"] = redeem_data["redeem"][redeems]["actions"]
                     await addAlert(alert, "0" if redeem_data["redeem"][redeems]["queue"] else "end")
         
@@ -1486,81 +1487,88 @@ async def runActions (actions, variables):
             for key, value in adata.items():
             
                 for variable in variables:
-                    adata[key] = adata[key].replace("%" + variable + "%", str(variables[variable]))
+                    adata[key] = adata[key].replace("[" + variable + "]", str(variables[variable]))
 
                 for type in ["counter","text","list","boolean"]:
-                    if "%" + type + ":" in value:
+                    if "[" + type + ":" in value:
                         type = type.replace("variable","text")
-                        name = adata[key].split("%" + type + ":")[1].split("%")[0]
+                        name = adata[key].split("[" + type + ":")[1].split("]")[0]
                         try:
                             with open(os.getcwd() + "\\data\\variables\\" + type + "\\" + name + ".txt", "r", encoding = "utf-8") as f:
                                 list = []
                                 for line in f.readlines():
                                     list.append(line.rstrip())
-                                adata[key] = adata[key].replace("%" + type + ":" + name + "%", ", ".join(list))
+                                adata[key] = adata[key].replace("[" + type + ":" + name + "]", ", ".join(list))
                         except Exception as e:
                             pass
                             # print (e)
                 
-                if "%rnumber" in adata[key]:
-                    min = int(adata[key].split("%rnumber:")[1].split("-")[0])
-                    max = int(adata[key].split("%rnumber:")[1].split("-")[1].split("%")[0])
-                    rstring = "%rnumber:" + str(min) + "-" + str(max) + "%"
+                def randomNumber (match):
+                    min_value = int(match.group(1))
+                    max_value = int(match.group(2))
+                    return str(random.randint(min_value, max_value))
+                
+                if "[rnumber" in adata[key]:
+                    min = int(adata[key].split("[rnumber:")[1].split("-")[0])
+                    max = int(adata[key].split("[rnumber:")[1].split("-")[1].split("[")[0])
+                    rstring = "[rnumber:" + str(min) + "-" + str(max) + "]"
                     adata[key] = adata[key].replace(rstring, str(random.randint(min, max)))
                     
-                if "%rfollower%" in adata[key]:
+                if "[rfollower]" in adata[key]:
                     followers = []
                     async for follower in await sv["twitch"].get_channel_followers(broadcaster_id=sv["streamer"].id):
                         followers.append(follower.user_name)
                     followers.remove("VaylBot")
-                    adata[key] = adata[key].replace("%rfollower%", random.choice(followers))
-        
-                if "%ruser%" in adata[key]:
+                    
+                    def randomFollower (match):
+                        return str(random.choice(followers))
+                    
+                    adata[key] = re.sub(r"\[rfollower\]", randomFollower, adata[key])
+
+                if "[ruser]" in adata[key]:
                     chatters = []
                     async for chatter in await sv["twitch"].get_chatters(sv["streamer"].id, sv["streamer"].id):
                         chatters.append(chatter.user_name)
                     chatters.remove("VaylBot")
-                    adata[key] = adata[key].replace("%ruser%", random.choice(chatters))
+                    
+                    def randomUser (match):
+                        return str(random.choice(chatters))
+                    
+                    adata[key] = re.sub(r"\[ruser\]", str(random.choice(chatters)), adata[key])
 
-                if "%rlist" in adata[key]:
-                    name = adata[key].replace("%","").split(":")[1].replace("%","")
+                def randomList (match):
+                    name = match.group(1)
+                    with open(os.getcwd() + "\\data\\variables\\list\\" + name + ".txt", 'r', encoding = "utf-8") as f:
+                        return str(random.choice(f.read().splitlines()))
+
+                if "[rlist:" in adata[key]:
+                    name = adata[key].split("[rlist:")[1].split("]")[0]
                     with open(os.getcwd() + "\\data\\variables\\list\\" + name + ".txt", 'r', encoding = "utf-8") as f:
                         data = f.read().splitlines()
-                        adata[key] = adata[key].replace("%rlist:" + name + "%", random.choice(data))
+                        adata[key] = re.sub(r"\[rlist:([a-zA-Z0-9_]+)\]", randomList, adata[key])
         
-                if "%system:dateus%" in adata[key]:
-                    today = date.today()
-                    d3 = today.strftime("%m/%d/%y")
-                    adata[key] = adata[key].replace("%system:dateus%", d3)
+                if "[system:dateus]" in adata[key]:
+                    adata[key] = re.sub(r"\[system:dateus\]", date.today().strftime("%m/%d/%y"), adata[key])
+
+                if "[system:dateuk]" in adata[key]:
+                    adata[key] = re.sub(r"\[system:dateuk\]", date.today().strftime("%d/%m/%y"), adata[key])
                     
-                if "%system:dateuk%" in adata[key]:
-                    today = date.today()
-                    d3 = today.strftime("%d/%m/%y")
-                    adata[key] = adata[key].replace("%system:dateuk%", d3)
-                    
-                if "%system:time%" in adata[key]:
-                    now = datetime.now()
-                    adata[key] = adata[key].replace("%system:time%", now.strftime("%H:%M:%S"))
-                    
-                if "%xstring:" in adata[key]:
+                if "[system:time]" in adata[key]:
+                    adata[key] = re.sub(r"\[system:time\]", datetime.now().strftime("%H:%M:%S"), adata[key])
+        
+                def repeatString (match):
+                    text = match.group(1)  # Extract the text part
+                    amount = int(match.group(2))  # Extract the amount as an integer
+                    return text * amount
+
+                if "[xstring:" in adata[key]:
                     string = adata[key].split(":")[1]
-                    amount = adata[key].split(":")[2].split("%")[0]
-                    adata[key] = adata[key].replace("%xstring:" + string + ":" + amount + "%", string * int(amount))
-                    
-                if "%uptime:%" in adata[key]:
-                    uptime = streams.started_at.replace(tzinfo=pytz.UTC)
-                    now = datetime.now(tz=pytz.UTC)
-                    days, remainder = divmod((now - uptime).total_seconds(), 86400)
-                    hours, remainder = divmod(remainder, 3600)
-                    minutes, remainder = divmod(remainder, 60)
-                    
-                    if "full" in adata[key]:
-                        adata[key] = adata[key].replace("%uptime:full%", ":".join([str(int(days)),str(int(hours)),str(int(minutes)),str(int(remainder))]))
-                    elif "seconds" in adata[key]:
-                        adata[key] = adata[key].replace("%uptime:seconds%", int((now - uptime).total_seconds()))
-                    
-            
-                    
+                    amount = adata[key].split(":")[2].split("]")[0]
+                    adata[key] = re.sub(r"\[xstring:([^\:]+):(\d+)\]", repeatString, adata[key])
+
+        
+
+   
         except Exception as e:
             logError(tag = "action.variables")
 
@@ -1837,8 +1845,8 @@ async def runActions (actions, variables):
             try:
                 found = False
                 for type in [".mp3",".wav"]:
-                    if os.path.exists(os.getcwd() + "\\data\\resources\\sounds\\" + adata["sound"] + type):
-                        playsound(os.getcwd() + "\\data\\resources\\sounds\\" + adata["sound"] + type, block = False)
+                    if os.path.exists(os.getcwd() + "\\data\\resources\\sounds\\" + adata["sound"].replace(".mp3","").replace(".wav","") + type):
+                        playsound(os.getcwd() + "\\data\\resources\\sounds\\" + adata["sound"].replace(".mp3","").replace(".wav","") + type, block = False)
                         found = True
                         break
                 if not found:
@@ -1877,7 +1885,7 @@ async def runActions (actions, variables):
                     
                     info = await sv["twitch"].get_channel_information(sv["streamer"].id)
                     info = info[0]
-                    directory = {"%game%":info.game_name, "%title%":info.title, "%name%":info.broadcaster_name, "%link%":"https://twitch.tv/" + sv["channel"].lower()}
+                    directory = {"[game]":info.game_name, "[title]":info.title, "[name]":info.broadcaster_name, "[link]":"https://twitch.tv/" + sv["channel"].lower()}
                     
                     description = "\n".join(data["embed"]["description"])
                     title = data["embed"]["title"]
@@ -1945,6 +1953,10 @@ async def runActions (actions, variables):
                     async for chatter in await sv["twitch"].get_chatters(sv["streamer"].id, sv["streamer"].id):
                         chatters.append(chatter.user_name)
                     chatters.remove("VaylBot")
+                    
+                    def randomUser (match):
+                        return str(random.choice(chatters))
+                    
                     condition = re.sub(r"\[ruser\]", str(random.choice(chatters)), condition)
                     
                 if "[system:dateus]" in condition:
