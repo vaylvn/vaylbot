@@ -842,16 +842,22 @@ async def manageAlertsAsync():
                     if a["type"] == "giftsub" and a["gifter"] == alert["gifter"]:
                         alert["amount"] += 1
                         pop_amount += 1
-
-            with open(os.getcwd() + "\\configuration\\event\\" + alert["type"] + ".yml", 'r', encoding = "utf-8") as file:
-                data = yaml.safe_load(file)
-                if "enabled" in data and data["enabled"] == True:
-                    actions = data["actions"]
-                    buffer = data["buffer"]
-                    
+            
+            if "redeem" in alert["type"]:
+                actions = alert["actions"]
+                buffer = alert["buffer"]
+            else:
+                with open(os.getcwd() + "\\configuration\\event\\" + alert["type"] + ".yml", 'r', encoding = "utf-8") as file:
+                    data = yaml.safe_load(file)
+                    if "enabled" in data and data["enabled"] == True:
+                        actions = data["actions"]
+                        buffer = data["buffer"]
+                        
                      
                     
-            
+            await runActions(actions, alert)
+            for i in range(0, pop_amount):
+                sv["alerts"].pop(0)
             
             
             continue
