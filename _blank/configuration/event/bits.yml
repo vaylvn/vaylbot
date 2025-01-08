@@ -1,23 +1,4 @@
 enabled: true
-conditionals:
-    TestExact:
-        condition: User gifts bits
-        value: valonvn
-        actions:
-        - chat ; message=Valon just dropped some bits!
-    TestMore:
-        condition: User gifts at least ... bits
-        value: 6
-        actions:
-        - announce ; message=Thanks for the %amount% bits %user%!, color=purple
-    Test5:
-        condition: User gifts ... bits
-        value: 5
-        actions:
-        - announce ; message=Thanks for the %amount% bits %user%! Love you!, color=purple
-    TestAny:
-        condition: User gifts bits
-        value: any
-        actions:
-        - chat ; message=%user% just dropped %amount% bits!
-    
+buffer: 0
+actions:
+- chat ; Thanks %user% for gifting %amount% bits!    

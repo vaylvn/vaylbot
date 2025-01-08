@@ -1,26 +1,4 @@
 enabled: true
-conditionals:
-    Default:
-        condition: Specific user subscribed
-        value: any
-        actions:
-        - chat ; message=Thanks for subscribing, %user%!
-    5Months:
-        condition: User is on ... month streak
-        value: 5
-        actions:
-        - announce ; message=%user% has a 5 month sub streak!
-    12 Total:
-        condition: User is on ... cumulative months
-        value: 12
-        actions:
-        - announce ; message=%user% has subbed for a total of 12 months!
-    Resub:
-        condition: User has resubbed
-        value: 1
-        actions:
-        - announce ; message=Thanks for resubbing, %user%!
-        
-buffer: 3
+buffer: 0
 actions:
-- chat ; %user% just subbed at %tier% for %total-months%
+- announce ; Thanks for subscribing, %user%! ; purple

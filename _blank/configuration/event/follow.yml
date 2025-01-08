@@ -1,4 +1,4 @@
 enabled: true
-buffer: 5
+buffer: 0
 actions:
-- chat ; hello!
+- chat ; Thanks for following, %user%!

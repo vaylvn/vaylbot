@@ -1,4 +1,5 @@
 enabled: true
+buffer: 0
 actions:
-- announce ; Be sure to follow %user%!
-- chat ; Join %user% over at https://www.twitch.tv/%user% playing %user:%arg1%:game%! 
+- announce ; Be sure to follow %user%! ; purple
+- chat ; "https://www.twitch.tv/%user%, last playing %user:%arg1%:game%!"

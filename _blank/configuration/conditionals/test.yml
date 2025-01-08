@@ -1,0 +1,5 @@
+condition: '[rnumber:10-30] > 50'
+true:
+- chat ; Number is higher!
+false:
+- chat ; Number is lower or equal to
