@@ -1,4 +1,4 @@
-__version__ = "beta0012"
+__version__ = "beta0011"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -12,8 +12,6 @@ from datetime import datetime, timedelta, date
 from twitchAPI.pubsub import PubSub
 from collections import OrderedDict
 from twitchAPI.helper import first
-# from multiprocessing import Pool
-# from contextlib import suppress
 from playsound3 import playsound
 from colorama import Fore, Back, Style, init
 from num2words import num2words
@@ -24,7 +22,6 @@ import subprocess
 import traceback
 import threading
 import requests
-# import win32gui
 import requests
 import asyncio
 import random
@@ -2346,31 +2343,67 @@ async def reload (chat):
 
 
 ## Log Error =======================================================================
-def logError (tag = None):
+def sanitize_path(path, base_path=None):
+    if base_path is None:
+        base_path = os.getcwd()
+    try:
+        return os.path.relpath(path, base_path)
+    except ValueError:
+        return path  # Return the original if it cannot be made relative
 
-    prompt ("error", "Error Detected")
-    with open(os.getcwd() + "\\data\\logs\\ref.yml", 'r', encoding = "utf-8") as file:
+def logError(tag=None):
+    # Display error prompt
+    prompt("error", "Error Detected")
+    base_path = os.getcwd()
+
+    # Load reference for the error cause
+    with open(os.path.join(base_path, "data", "logs", "ref.yml"), 'r', encoding="utf-8") as file:
         data = yaml.safe_load(file)
-        reference = data["reference"][tag] if tag is not None and tag in data["reference"] else "Undefined"
-        prompt ("blank", "Cause: " + reference)
-        log = ["User: " + sv["channel"], "Version: " + __version__, "Cause: " + reference]
-    
+        reference = data["reference"].get(tag, "Undefined")
+        prompt("blank", "Cause: " + reference)
+
+    # Gather error details
+    error_traceback = traceback.format_exc()
+    sanitized_traceback = "\n".join(
+        sanitize_path(line, base_path) for line in error_traceback.splitlines()
+    )
+
+    log_details = {
+        "User": sv["channel"],
+        "Version": __version__,
+        "Cause": reference,
+        "Error Line": sanitized_traceback.splitlines()[-1] if sanitized_traceback else "N/A",
+        "Stack Trace": sanitized_traceback
+    }
+
+    # Write error to log file
     timestamp = str(time.time())
-    with open (os.getcwd() + "\\data\\logs\\" + timestamp + ".txt", 'w') as log_file:
-        for line in log:
-            log_file.write(line + "\n")
-        log_file.write(traceback.format_exc())
-    
-    try:    
-        with open(os.getcwd() + "\\configuration\\configuration.yml", 'r', encoding = "utf-8") as file:
-            data = yaml.safe_load(file)
-            if "bug-auto-report" in data and data["bug-auto-report"]:
-                with open (os.getcwd() + "\\data\\logs\\" + timestamp + ".txt", 'r') as log_file:
-                    webhook = DiscordWebhook(url = "https://discord.com/api/webhooks/1257675918957351013/wiIdAeOQBaXdhzyLrPRhplWz2mBbfZrTbch--c-5wMYDu1YYk2gUexBj6AUMTahnPlZs", username = "Bug Report", avatar_url = "https://i.ibb.co/ZHwjkms/icon.png")
-                    webhook.add_file(file = log_file.read(), filename= timestamp + ".txt")
-                    response = webhook.execute()
-    except Exception as e:
+    log_file_path = os.path.join(base_path, "data", "logs", f"{timestamp}.txt")
+    with open(log_file_path, 'w', encoding="utf-8") as log_file:
+        log_file.write(f"User: {log_details['User']}\n")
+        log_file.write(f"Version: {log_details['Version']}\n")
+        log_file.write(f"Cause: {log_details['Cause']}\n")
+        log_file.write(f"Error Line: {log_details['Error Line']}\n\n")
+        log_file.write("Stack Trace:\n")
+        log_file.write(log_details["Stack Trace"])
+
+    # Optionally send error to Discord
+    try:
+        with open(os.path.join(base_path, "configuration", "configuration.yml"), 'r', encoding="utf-8") as file:
+            config = yaml.safe_load(file)
+            if config.get("bug-auto-report", False):
+                webhook = DiscordWebhook(
+                    url="https://discord.com/api/webhooks/1257675918957351013/wiIdAeOQBaXdhzyLrPRhplWz2mBbfZrTbch--c-5wMYDu1YYk2gUexBj6AUMTahnPlZs",
+                    username="Bug Report",
+                    avatar_url="https://i.ibb.co/ZHwjkms/icon.png"
+                )
+                with open(log_file_path, 'r', encoding="utf-8") as log_file:
+                    webhook.add_file(file=log_file.read(), filename=f"{timestamp}.txt")
+                webhook.execute()
+    except Exception:
+        # Handle exceptions silently to avoid recursive error logging
         pass
+
 ## =================================================================================
 
 
