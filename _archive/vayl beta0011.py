@@ -1,4 +1,4 @@
-__version__ = "beta0010"
+__version__ = "beta0011"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -1426,7 +1426,7 @@ async def runActions (actions, variables):
                             "editfile"       : ["filepath", "modifier", "text"],
                             "text"           : ["name", "modifier", "text"],
                             "counter"        : ["name", "modifier", "amount"],
-                            "boolean"        : ["name", "modifier", "value"],
+                            "boolean"        : ["name", "value"],
                             "console"        : ["message"],
                             "list"           : ["name", "modifier", "text"],
                             "conditional"    : ["name"],
@@ -1760,7 +1760,7 @@ async def runActions (actions, variables):
                         value = (f.read().lower() == "true")
                 except:
                     pass
-                value = not value if adata["modifier"].lower() == "toggle" else (adata["value"].lower() == "true")
+                value = not value if adata["value"].lower() == "toggle" else (adata["value"].lower() == "true")
                 with open(os.getcwd() + "\\data\\variables\\boolean\\" + adata["name"] + ".txt", 'w', encoding = "utf-8") as f:
                     f.write(str(value)) 
             except Exception as e:
@@ -2317,7 +2317,7 @@ def logError (tag = None):
         data = yaml.safe_load(file)
         reference = data["reference"][tag] if tag is not None and tag in data["reference"] else "Undefined"
         prompt ("blank", "Cause: " + reference)
-        log = ["User: " + sv["channel"], "Version: " + sv["version"], "Cause: " + reference]
+        log = ["User: " + sv["channel"], "Version: " + __version__, "Cause: " + reference]
     
     timestamp = str(time.time())
     with open (os.getcwd() + "\\data\\logs\\" + timestamp + ".txt", 'w') as log_file:
@@ -2359,9 +2359,6 @@ async def updateVariable (name, value):
 async def run():
 
     global sv
-
-    with open(os.getcwd() + "\\data\\version.txt", 'r', encoding = "utf-8") as file:
-        sv["version"] = file.read()
 
     with open(os.getcwd() + "\\configuration\\configuration.yml", 'r', encoding = "utf-8") as file:
         data = yaml.safe_load(file)

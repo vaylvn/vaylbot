@@ -1,4 +1,4 @@
-__version__ = "beta0010"
+__version__ = "beta0009"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -1426,7 +1426,7 @@ async def runActions (actions, variables):
                             "editfile"       : ["filepath", "modifier", "text"],
                             "text"           : ["name", "modifier", "text"],
                             "counter"        : ["name", "modifier", "amount"],
-                            "boolean"        : ["name", "modifier", "value"],
+                            "boolean"        : ["name", "value"],
                             "console"        : ["message"],
                             "list"           : ["name", "modifier", "text"],
                             "conditional"    : ["name"],
@@ -1760,7 +1760,7 @@ async def runActions (actions, variables):
                         value = (f.read().lower() == "true")
                 except:
                     pass
-                value = not value if adata["modifier"].lower() == "toggle" else (adata["value"].lower() == "true")
+                value = not value if adata["value"].lower() == "toggle" else (adata["value"].lower() == "true")
                 with open(os.getcwd() + "\\data\\variables\\boolean\\" + adata["name"] + ".txt", 'w', encoding = "utf-8") as f:
                     f.write(str(value)) 
             except Exception as e:
