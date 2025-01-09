@@ -1,4 +1,4 @@
-__version__ = "beta0011"
+__version__ = "beta0010"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -2131,7 +2131,7 @@ async def runActions (actions, variables):
                                     
                                 if data is not None:
                                 
-                                    file_path = os.path.join(os.getcwd(), "tts.wav")
+                                    file_path = os.path.join(os.getcwd(),"data","resources","tts.wav")
                                     with open(file_path, "+wb") as file:
                                         file.write(data)
                                     
