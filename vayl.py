@@ -802,6 +802,55 @@ async def timedActionsAsync():
 ## =================================================================================
 
 
+
+
+
+## =================================================================================
+## =================================================================================
+######################################## OBS #######################################
+## =================================================================================
+## =================================================================================
+
+
+## Index OBS =======================================================================
+def indexOBS():
+    asyncio.run(indexOBSAsync())
+## =================================================================================
+
+
+## Index OBS =======================================================================
+async def indexOBSAsync():
+    global sv
+    sv["obs"] = {}
+    
+    while True:
+    
+        sv["obs"]["scenes"] = []
+        sv["obs"]["groups"] = []
+    
+        try:
+            cl = None
+            with open(os.getcwd() + "\\configuration\\configuration.yml", 'r', encoding = "utf-8") as file:
+                data = yaml.safe_load(file)
+                cl = obs.ReqClient(host='localhost', port=4455, password = data["obs-password"])
+                for scene in cl.get_scene_list().__dict__["scenes"]:
+                    sv["obs"]["scenes"].append(scene["sceneName"])
+                for group in cl.get_group_list().__dict__["groups"]:
+                    sv["obs"]["groups"].append(group)
+        except:
+            pass
+    
+    
+        await asyncio.sleep(60)
+## =================================================================================
+
+
+## =================================================================================
+
+
+
+
+
 ## =================================================================================
 ## =================================================================================
 ###################################### ALERTS ######################################
@@ -1409,8 +1458,6 @@ async def isSubbed (user):
 async def runActions (actions, variables):
 
     cl = None
-    obs_scenes = []
-    obs_groups = []
     
     action_requirements = { "obs:scene"      : ["scene"],
                             "obs:show"       : ["source"],
@@ -1439,21 +1486,15 @@ async def runActions (actions, variables):
 
     for a in actions:
     
+        
         action = a.split(" ; ")[0]
         arguments = a.split(" ; ")[1:]
         
-        obs_actions = ["obs:scene","obs:show","obs:hide","obs:toggle","obs:label","obs:image","obs:mediafile","obs:slideshow", "obs:filter"]
         if cl is None:
-            if action in obs_actions:
-                 with open(os.getcwd() + "\\configuration\\configuration.yml", 'r', encoding = "utf-8") as file:
+            if action in ["obs:scene","obs:show","obs:hide","obs:toggle","obs:label","obs:image","obs:mediafile","obs:slideshow", "obs:filter"]:
+                with open(os.getcwd() + "\\configuration\\configuration.yml", 'r', encoding = "utf-8") as file:
                     data = yaml.safe_load(file)
                     cl = obs.ReqClient(host='localhost', port=4455, password = data["obs-password"])
-                    
-                    for scene in cl.get_scene_list().__dict__["scenes"]:
-                        obs_scenes.append(scene["sceneName"])
-                    for group in cl.get_group_list().__dict__["groups"]:
-                        obs_groups.append(group) 
-        
         
         adata = {}
         for i in range(0, len(arguments)):
@@ -1575,7 +1616,7 @@ async def runActions (actions, variables):
         def modifySource (source_name, source_action):
             try:
                 found = False
-                for scene in obs_scenes:
+                for scene in sv["obs"]["scenes"]:
                     for item in cl.get_scene_item_list(scene).__dict__["scene_items"]:
                         if source_name == item["sourceName"]:
                             id = cl.get_scene_item_id(scene, adata["source"], offset = None).__dict__["scene_item_id"] 
@@ -1586,7 +1627,7 @@ async def runActions (actions, variables):
                                 cl.set_scene_item_enabled(scene, id, not enabled)
                             found = True
                 if not found:
-                    for group in obs_groups:
+                    for group in sv["obs"]["groups"]:
                         for item in cl.get_group_scene_item_list(group).__dict__["scene_items"]:
                             if source_name in item["sourceName"]:
                                 id = cl.get_scene_item_id(group, adata["source"], offset = None).__dict__["scene_item_id"] 
@@ -1606,13 +1647,9 @@ async def runActions (actions, variables):
         ## obs:scene ===============================================================
         if action == "obs:scene":
             try:
-                found = False
-                for scene in cl.get_scene_list().__dict__["scenes"]:
-                    if adata["scene"] == scene["sceneName"]:
-                        cl.set_current_program_scene(adata["scene"])
-                        found = True
-                        break
-                if not found:
+                if adata["scene"] in sv["obs"]["scenes"]:
+                    cl.set_current_program_scene(adata["scene"])
+                else:
                     prompt ("error", "Scene not found: " + adata["scene"])
             except Exception as e:
                 logError(tag = "obs.scene")
@@ -2413,6 +2450,9 @@ async def run():
     sv["chat"].register_event(ChatEvent.MESSAGE, on_message)
     sv["chat"].register_event(ChatEvent.RAID, on_raid)
     sv["chat"].start()
+    
+    t_obs = threading.Thread(target = indexOBS)
+    t_obs.start()
     
     t_alert = threading.Thread(target= manageAlerts)
     t_alert.start()
