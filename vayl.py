@@ -1,4 +1,4 @@
-__version__ = "beta0010"
+__version__ = "beta0011"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -12,8 +12,8 @@ from datetime import datetime, timedelta, date
 from twitchAPI.pubsub import PubSub
 from collections import OrderedDict
 from twitchAPI.helper import first
-from multiprocessing import Pool
-from contextlib import suppress
+# from multiprocessing import Pool
+# from contextlib import suppress
 from playsound3 import playsound
 from colorama import Fore, Back, Style, init
 from num2words import num2words
@@ -24,9 +24,8 @@ import subprocess
 import traceback
 import threading
 import requests
-import win32gui
+# import win32gui
 import requests
-import logging
 import asyncio
 import random
 import yaml
