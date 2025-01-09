@@ -1,4 +1,4 @@
-__version__ = "beta0010"
+__version__ = "beta0011"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
