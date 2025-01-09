@@ -2317,7 +2317,7 @@ def logError (tag = None):
         data = yaml.safe_load(file)
         reference = data["reference"][tag] if tag is not None and tag in data["reference"] else "Undefined"
         prompt ("blank", "Cause: " + reference)
-        log = ["User: " + sv["channel"], "Version: " + __version__, "Cause: " + reference]
+        log = ["User: " + sv["channel"], "Version: " + sv["version"], "Cause: " + reference]
     
     timestamp = str(time.time())
     with open (os.getcwd() + "\\data\\logs\\" + timestamp + ".txt", 'w') as log_file:
@@ -2359,6 +2359,9 @@ async def updateVariable (name, value):
 async def run():
 
     global sv
+
+    with open(os.getcwd() + "\\data\\version.txt", 'r', encoding = "utf-8") as file:
+        sv["version"] = file.read()
 
     with open(os.getcwd() + "\\configuration\\configuration.yml", 'r', encoding = "utf-8") as file:
         data = yaml.safe_load(file)
