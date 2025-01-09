@@ -62,7 +62,7 @@ tts_voice = { "cepstral"        : ["Allison", "Amy", "Belle", "Callie", "Charlie
 
 ## Bot Variables ===================================================================
 sv = { "id" : "xfc4596ekgo4ewkag6wn01hgs4hfbl", "secret" : "p8wl2zzuk3sgjmbdrlxe9l65xno8wk",
-       "version" : "2.0.9", "twitch" : None, "streamer" : None, "channel" : None, "chat" : None, "live" : False,
+       "version" : "2.0.8", "twitch" : None, "streamer" : None, "channel" : None, "chat" : None, "live" : False,
        "alerts" : [], "actions" : [], "commands" : {}, "sfx" : {}, "phrases" : {}, "moderation" : {}, "spoken" : [] }
 ## =================================================================================
 
@@ -1508,8 +1508,11 @@ async def runActions (actions, variables):
                     max_value = int(match.group(2))
                     return str(random.randint(min_value, max_value))
                 
-                if "[rnumber:" in adata[key]:
-                    adata[key] = re.sub(r"\[rnumber:(\d+)-(\d+)\]", randomNumber, adata[key])
+                if "[rnumber" in adata[key]:
+                    min = int(adata[key].split("[rnumber:")[1].split("-")[0])
+                    max = int(adata[key].split("[rnumber:")[1].split("-")[1].split("[")[0])
+                    rstring = "[rnumber:" + str(min) + "-" + str(max) + "]"
+                    adata[key] = adata[key].replace(rstring, str(random.randint(min, max)))
                     
                 if "[rfollower]" in adata[key]:
                     followers = []
@@ -1744,7 +1747,7 @@ async def runActions (actions, variables):
                 except:
                     pass
                 with open(os.getcwd() + "\\data\\variables\\text\\" + adata["name"] + ".txt", 'w', encoding = "utf-8") as file:
-                    file.write(text + str(adata["text"]) if adata["modifier"] == "append" else str(adata["text"]))
+                    file.write(text + adata["text"] if adata["modifier"] == "append" else adata["text"])
             except Exception as e:
                 logError(tag = "action.text")
         ## =========================================================================
