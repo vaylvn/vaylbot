@@ -1466,7 +1466,6 @@ async def runActions (actions, variables):
                             "playsound"      : ["sound"],
                             "wait"           : ["time"],
                             "chat"           : ["message"],
-                            "editfile"       : ["filepath", "modifier", "text"],
                             "text"           : ["name", "modifier", "text"],
                             "counter"        : ["name", "modifier", "amount"],
                             "boolean"        : ["name", "value"],
@@ -1495,31 +1494,6 @@ async def runActions (actions, variables):
         adata = {}
         for i in range(0, len(arguments)):
             adata[action_requirements[action][i]] = arguments[i]
-                                
-                
-        
-        # adata = { "obs:scene"      : { "scene":arguments[0] },
-        #          "obs:show"       : { "source":arguments[0] },
-        #          "obs:hide"       : { "source":arguments[0] },
-        #          "obs:toggle"     : { "source":arguments[0] },
-        #          "obs:label"      : { "source":arguments[0], "text":arguments[1], "color":arguments[2] },
-        #          "obs:mediafile"  : { "source":arguments[0], "filepath":arguments[1] },
-        #          "obs:slideshow"  : { "source":arguments[0], "state":arguments[1] },
-        #          "playsound"      : { "sound":"" },
-        #          "wait"           : { "time":0 },
-        #          "chat"           : { "message":"" },
-        #          "editfile"       : { "filepath":"", "action":"", "text":"" },
-        #          "variable"       : { "name":"", "text":"" },
-        #          "counter"        : { "name":"", "modifier":"", "amount":0 },
-        #          "boolean"        : { "name":"", "modifier":"", "value":None },
-        #          "console"        : { "message":"" },
-        #          "list"           : { "name":"", "modifier":"", "text":"" },
-        #          "conditional"    : { "name":"" },
-        #          "tts"            : { "voice":"", "message":"", "halt":True, "cutoff":99999999 },
-        #          "cmd"            : { "command":"" },
-        #          "announce"       : { "message":"", "color":"default" },
-        #          "vip"            : { "modifier":"", "username":"" },
-        #          "webhook"        : { "name":"" }}
 
         try:
             for key, value in adata.items():
@@ -1549,6 +1523,25 @@ async def runActions (actions, variables):
                 if "[rnumber:" in adata[key]:
                     adata[key] = re.sub(r"\[rnumber:(\d+)-(\d+)\]", randomNumber, adata[key])
                     
+                if "[viewers]" in adata[key]:
+                    try:
+                        async for streams in await sv["twitch"].get_streams(user_id = [sv["streamer"].id]):
+                            adata[key] = re.sub(r"\[viewers\]", str(streams.viewer_count), adata[key])
+                    except:
+                        logError(tag = "stream.viewers")
+                    
+                if "[followers]" in adata[key]:
+                    counter = 0
+                    async for follower in await sv["twitch"].get_channel_followers(broadcaster_id=sv["streamer"].id):
+                        counter += 0 if follower.user_name.lower() == "vaylbot" else 1
+                    adata[key] = re.sub(r"\[followers\]", str(counter), adata[key])
+                    
+                if ["subscribers"] in adata[key]:
+                    counter = 0
+                    async for sub in sv["twitch"].get_broadcaster_subscriptions(sv["streamer"].id):
+                        counter += 0 if sub.user_name.lower() == "vaylbot" else 1
+                    adata[key] = re.sub(r"\[subscribers\]", str(counter), adata[key])    
+
                 if "[rfollower]" in adata[key]:
                     followers = []
                     async for follower in await sv["twitch"].get_channel_followers(broadcaster_id=sv["streamer"].id):
@@ -1741,30 +1734,6 @@ async def runActions (actions, variables):
                 await sv["chat"].send_message(sv["channel"], adata["message"])
             except Exception as e:
                 logError(tag = "action.chat")
-        ## =========================================================================
-
-
-        ## editfile ================================================================
-        if action == "editfile":
-            try:
-                with open(adata["path"], 'r', encoding = "utf-8") as f:
-                    data = f.read()
-                    if adata["action"] == "overwrite":
-                        try:
-                            with open(adata["path"], 'w', encoding = "utf-8") as file:
-                                file.write(adata["text"])
-                        except Exception as e:
-                            with open(adata["path"], 'w', encoding = "utf-8") as file:
-                                file.write(data)
-                    elif adata["action"] == "append":
-                        try:
-                            with open(adata["path"], 'a', encoding = "utf-8") as file:
-                                file.write(adata["text"])
-                        except Exception as e:
-                            with open(adata["path"], 'w', encoding = "utf-8") as file:
-                                file.write(data)
-            except Exception as e:
-                logError(tag = "action.editfile")
         ## =========================================================================
 
 
@@ -1967,7 +1936,26 @@ async def runActions (actions, variables):
                 
                 for tag in variables:
                     condition = condition.replace("[" + tag + "]", str(variables[tag]))
-                                          
+                             
+                if "[followers]" in condition:
+                    counter = 0
+                    async for follower in await sv["twitch"].get_channel_followers(broadcaster_id=sv["streamer"].id):
+                        counter += 0 if follower.user_name.lower() == "vaylbot" else 1
+                    condition = re.sub(r"\[followers\]", str(counter), condition)
+                    
+                if ["subscribers"] in condition:
+                    counter = 0
+                    async for sub in sv["twitch"].get_broadcaster_subscriptions(sv["streamer"].id):
+                        counter += 0 if sub.user_name.lower() == "vaylbot" else 1
+                    condition = re.sub(r"\[subscribers\]", str(counter), condition)
+                             
+                if "[viewers]" in condition:
+                    try:
+                        async for streams in await sv["twitch"].get_streams(user_id = [sv["streamer"].id]):
+                            condition = re.sub(r"\[viewers\]", str(streams.viewer_count), condition)
+                    except:
+                        logError(tag = "stream.viewers")
+                             
                 if "[rfollower]" in condition:
                     followers = []
                     async for follower in await sv["twitch"].get_channel_followers(broadcaster_id=sv["streamer"].id):
