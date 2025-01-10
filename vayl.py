@@ -1476,6 +1476,7 @@ async def runActions (actions, variables):
                             "cmd"            : ["command"],
                             "announce"       : ["message", "color"],
                             "vip"            : ["modifier", "usernmae"],
+                            "timeout"        : ["user", "duration", "reason"],
                             "webhook"        : ["name"],
                             "createclip"     : []}
 
@@ -1860,7 +1861,7 @@ async def runActions (actions, variables):
         if action == "timeout":
             try:
                 async for u in sv["twitch"].get_users(logins = [adata["username"]]):
-                    await sv["twitch"].ban_user(sv["streamer"].id, sv["streamer"].id, u.id, adata["reason"], int(adata["time"]))
+                    await sv["twitch"].ban_user(sv["streamer"].id, sv["streamer"].id, u.id, adata["reason"], int(adata["duration"]))
             except Exception as e:
                 logError(tag = "action.timeout")
         ## =========================================================================

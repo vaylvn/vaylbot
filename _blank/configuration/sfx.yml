@@ -2,7 +2,7 @@ enabled: true
 global-cooldown: 0
 sounds:
   ayy:
-    sound: ayy.mp3
+    sound: ayy
     streamer-only: false
     sub-only: false
     mod-only: false
@@ -10,4 +10,3 @@ sounds:
     cooldown:
       user: 10
       global: 10
-    allowed-users: all
