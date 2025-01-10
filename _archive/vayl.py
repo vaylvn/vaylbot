@@ -12,8 +12,6 @@ from datetime import datetime, timedelta, date
 from twitchAPI.pubsub import PubSub
 from collections import OrderedDict
 from twitchAPI.helper import first
-# from multiprocessing import Pool
-# from contextlib import suppress
 from playsound3 import playsound
 from colorama import Fore, Back, Style, init
 from num2words import num2words
@@ -24,7 +22,6 @@ import subprocess
 import traceback
 import threading
 import requests
-# import win32gui
 import requests
 import asyncio
 import random
@@ -1469,7 +1466,6 @@ async def runActions (actions, variables):
                             "playsound"      : ["sound"],
                             "wait"           : ["time"],
                             "chat"           : ["message"],
-                            "editfile"       : ["filepath", "modifier", "text"],
                             "text"           : ["name", "modifier", "text"],
                             "counter"        : ["name", "modifier", "amount"],
                             "boolean"        : ["name", "value"],
@@ -1480,6 +1476,7 @@ async def runActions (actions, variables):
                             "cmd"            : ["command"],
                             "announce"       : ["message", "color"],
                             "vip"            : ["modifier", "usernmae"],
+                            "timeout"        : ["user", "duration", "reason"],
                             "webhook"        : ["name"],
                             "createclip"     : []}
 
@@ -1498,31 +1495,6 @@ async def runActions (actions, variables):
         adata = {}
         for i in range(0, len(arguments)):
             adata[action_requirements[action][i]] = arguments[i]
-                                
-                
-        
-        # adata = { "obs:scene"      : { "scene":arguments[0] },
-        #          "obs:show"       : { "source":arguments[0] },
-        #          "obs:hide"       : { "source":arguments[0] },
-        #          "obs:toggle"     : { "source":arguments[0] },
-        #          "obs:label"      : { "source":arguments[0], "text":arguments[1], "color":arguments[2] },
-        #          "obs:mediafile"  : { "source":arguments[0], "filepath":arguments[1] },
-        #          "obs:slideshow"  : { "source":arguments[0], "state":arguments[1] },
-        #          "playsound"      : { "sound":"" },
-        #          "wait"           : { "time":0 },
-        #          "chat"           : { "message":"" },
-        #          "editfile"       : { "filepath":"", "action":"", "text":"" },
-        #          "variable"       : { "name":"", "text":"" },
-        #          "counter"        : { "name":"", "modifier":"", "amount":0 },
-        #          "boolean"        : { "name":"", "modifier":"", "value":None },
-        #          "console"        : { "message":"" },
-        #          "list"           : { "name":"", "modifier":"", "text":"" },
-        #          "conditional"    : { "name":"" },
-        #          "tts"            : { "voice":"", "message":"", "halt":True, "cutoff":99999999 },
-        #          "cmd"            : { "command":"" },
-        #          "announce"       : { "message":"", "color":"default" },
-        #          "vip"            : { "modifier":"", "username":"" },
-        #          "webhook"        : { "name":"" }}
 
         try:
             for key, value in adata.items():
@@ -1552,6 +1524,25 @@ async def runActions (actions, variables):
                 if "[rnumber:" in adata[key]:
                     adata[key] = re.sub(r"\[rnumber:(\d+)-(\d+)\]", randomNumber, adata[key])
                     
+                if "[viewers]" in adata[key]:
+                    try:
+                        async for streams in await sv["twitch"].get_streams(user_id = [sv["streamer"].id]):
+                            adata[key] = re.sub(r"\[viewers\]", str(streams.viewer_count), adata[key])
+                    except:
+                        logError(tag = "stream.viewers")
+                    
+                if "[followers]" in adata[key]:
+                    counter = 0
+                    async for follower in await sv["twitch"].get_channel_followers(broadcaster_id=sv["streamer"].id):
+                        counter += 0 if follower.user_name.lower() == "vaylbot" else 1
+                    adata[key] = re.sub(r"\[followers\]", str(counter), adata[key])
+                    
+                if ["subscribers"] in adata[key]:
+                    counter = 0
+                    async for sub in sv["twitch"].get_broadcaster_subscriptions(sv["streamer"].id):
+                        counter += 0 if sub.user_name.lower() == "vaylbot" else 1
+                    adata[key] = re.sub(r"\[subscribers\]", str(counter), adata[key])    
+
                 if "[rfollower]" in adata[key]:
                     followers = []
                     async for follower in await sv["twitch"].get_channel_followers(broadcaster_id=sv["streamer"].id):
@@ -1747,30 +1738,6 @@ async def runActions (actions, variables):
         ## =========================================================================
 
 
-        ## editfile ================================================================
-        if action == "editfile":
-            try:
-                with open(adata["path"], 'r', encoding = "utf-8") as f:
-                    data = f.read()
-                    if adata["action"] == "overwrite":
-                        try:
-                            with open(adata["path"], 'w', encoding = "utf-8") as file:
-                                file.write(adata["text"])
-                        except Exception as e:
-                            with open(adata["path"], 'w', encoding = "utf-8") as file:
-                                file.write(data)
-                    elif adata["action"] == "append":
-                        try:
-                            with open(adata["path"], 'a', encoding = "utf-8") as file:
-                                file.write(adata["text"])
-                        except Exception as e:
-                            with open(adata["path"], 'w', encoding = "utf-8") as file:
-                                file.write(data)
-            except Exception as e:
-                logError(tag = "action.editfile")
-        ## =========================================================================
-
-
         ## text ====================================================================
         if action == "text":
             try:
@@ -1894,7 +1861,7 @@ async def runActions (actions, variables):
         if action == "timeout":
             try:
                 async for u in sv["twitch"].get_users(logins = [adata["username"]]):
-                    await sv["twitch"].ban_user(sv["streamer"].id, sv["streamer"].id, u.id, adata["reason"], int(adata["time"]))
+                    await sv["twitch"].ban_user(sv["streamer"].id, sv["streamer"].id, u.id, adata["reason"], int(adata["duration"]))
             except Exception as e:
                 logError(tag = "action.timeout")
         ## =========================================================================
@@ -1970,7 +1937,26 @@ async def runActions (actions, variables):
                 
                 for tag in variables:
                     condition = condition.replace("[" + tag + "]", str(variables[tag]))
-                                          
+                             
+                if "[followers]" in condition:
+                    counter = 0
+                    async for follower in await sv["twitch"].get_channel_followers(broadcaster_id=sv["streamer"].id):
+                        counter += 0 if follower.user_name.lower() == "vaylbot" else 1
+                    condition = re.sub(r"\[followers\]", str(counter), condition)
+                    
+                if ["subscribers"] in condition:
+                    counter = 0
+                    async for sub in sv["twitch"].get_broadcaster_subscriptions(sv["streamer"].id):
+                        counter += 0 if sub.user_name.lower() == "vaylbot" else 1
+                    condition = re.sub(r"\[subscribers\]", str(counter), condition)
+                             
+                if "[viewers]" in condition:
+                    try:
+                        async for streams in await sv["twitch"].get_streams(user_id = [sv["streamer"].id]):
+                            condition = re.sub(r"\[viewers\]", str(streams.viewer_count), condition)
+                    except:
+                        logError(tag = "stream.viewers")
+                             
                 if "[rfollower]" in condition:
                     followers = []
                     async for follower in await sv["twitch"].get_channel_followers(broadcaster_id=sv["streamer"].id):
@@ -2346,31 +2332,68 @@ async def reload (chat):
 
 
 ## Log Error =======================================================================
-def logError (tag = None):
 
-    prompt ("error", "Error Detected")
-    with open(os.getcwd() + "\\data\\logs\\ref.yml", 'r', encoding = "utf-8") as file:
-        data = yaml.safe_load(file)
-        reference = data["reference"][tag] if tag is not None and tag in data["reference"] else "Undefined"
-        prompt ("blank", "Cause: " + reference)
-        log = ["User: " + sv["channel"], "Version: " + __version__, "Cause: " + reference]
-    
+
+
+def sanitize_path(path, base_path=None):
+    if base_path is None:
+        base_path = os.getcwd()
+    try:
+        return os.path.relpath(path, base_path)
+    except ValueError:
+        return path  # Return the original if it cannot be made relative
+
+def logError(tag=None):
+    # Display error prompt
+    prompt("error", "Error Detected")
+    base_path = os.getcwd()
+
+    # Load reference for the error cause
+    reference = error_reference.get(tag, "Undefined")
+    prompt("blank", "Cause: " + reference)
+
+    # Gather error details
+    error_traceback = traceback.format_exc()
+    sanitized_traceback = "\n".join(
+        sanitize_path(line, base_path) for line in error_traceback.splitlines()
+    )
+
+    log_details = {
+        "User": sv["channel"],
+        "Version": __version__,
+        "Cause": reference,
+        "Error Line": sanitized_traceback.splitlines()[-1] if sanitized_traceback else "N/A",
+        "Stack Trace": sanitized_traceback
+    }
+
+    # Write error to log file
     timestamp = str(time.time())
-    with open (os.getcwd() + "\\data\\logs\\" + timestamp + ".txt", 'w') as log_file:
-        for line in log:
-            log_file.write(line + "\n")
-        log_file.write(traceback.format_exc())
-    
-    try:    
-        with open(os.getcwd() + "\\configuration\\configuration.yml", 'r', encoding = "utf-8") as file:
-            data = yaml.safe_load(file)
-            if "bug-auto-report" in data and data["bug-auto-report"]:
-                with open (os.getcwd() + "\\data\\logs\\" + timestamp + ".txt", 'r') as log_file:
-                    webhook = DiscordWebhook(url = "https://discord.com/api/webhooks/1257675918957351013/wiIdAeOQBaXdhzyLrPRhplWz2mBbfZrTbch--c-5wMYDu1YYk2gUexBj6AUMTahnPlZs", username = "Bug Report", avatar_url = "https://i.ibb.co/ZHwjkms/icon.png")
-                    webhook.add_file(file = log_file.read(), filename= timestamp + ".txt")
-                    response = webhook.execute()
-    except Exception as e:
+    log_file_path = os.path.join(base_path, "data", "logs", f"{timestamp}.txt")
+    with open(log_file_path, 'w', encoding="utf-8") as log_file:
+        log_file.write(f"User: {log_details['User']}\n")
+        log_file.write(f"Version: {log_details['Version']}\n")
+        log_file.write(f"Cause: {log_details['Cause']}\n")
+        log_file.write(f"Error Line: {log_details['Error Line']}\n\n")
+        log_file.write("Stack Trace:\n")
+        log_file.write(log_details["Stack Trace"])
+
+    # Optionally send error to Discord
+    try:
+        with open(os.path.join(base_path, "configuration", "configuration.yml"), 'r', encoding="utf-8") as file:
+            config = yaml.safe_load(file)
+            if config.get("bug-auto-report", False):
+                webhook = DiscordWebhook(
+                    url="https://discord.com/api/webhooks/1257675918957351013/wiIdAeOQBaXdhzyLrPRhplWz2mBbfZrTbch--c-5wMYDu1YYk2gUexBj6AUMTahnPlZs",
+                    username="Bug Report",
+                    avatar_url="https://i.ibb.co/ZHwjkms/icon.png"
+                )
+                with open(log_file_path, 'r', encoding="utf-8") as log_file:
+                    webhook.add_file(file=log_file.read(), filename=f"{timestamp}.txt")
+                webhook.execute()
+    except Exception:
+        # Handle exceptions silently to avoid recursive error logging
         pass
+
 ## =================================================================================
 
 
@@ -2494,6 +2517,95 @@ async def run():
         await asyncio.sleep(1)
 
 ## =================================================================================
+
+
+## =================================================================================
+## =================================================================================
+##################################### ERRORS #######################################
+## =================================================================================
+## =================================================================================
+
+error_reference = { "chat.moderation" : "Applying ModerationCheck to chat message.",
+                    "chat.phrasecheck" : "Applying PhraseCheck to chat message.",
+                    "chat.addquote" : "Attempting to add new quote.",
+                    "obs.modifysource" : "Attempting to modify OBS source.",
+                    "obs.scene" : "Attempting to switch OBS scene.",
+                    "obs.label" : "Attempting to modify OBS label.",
+                    "obs.image" : "Attempting to modify OBS image.",
+                    "obs.mediafile" : "Attempting to modify OBS media file.",
+                    "obs.slideshow" : "Attempting to modify OBS slideshow.",
+                    "obs.filter" : "Attempting to access OBS source filter.",
+                    "action.wait" : "Attempting to run 'wait' action.",
+                    "action.chat" : "Attempting to run 'chat' action.",
+                    "action.editfile" : "Attempting to run 'editfile' action.",
+                    "action.text" : "Attempting to run 'text' action.",
+                    "action.boolean" : "Attempting to run 'boolean' action.",
+                    "action.oounter" : "Attempting to run 'counter' action.",
+                    "action.list" : "Attempting to run 'list' action.",
+                    "action.announce" : "Attempting to run 'announce' action.",
+                    "action.vip" : "Attempting to run 'vip' action.",
+                    "action.cmd" : "Attempting to run 'cmd' action.",
+                    "action.playsound" : "Attempting to run 'playsound' action.",
+                    "action.timeout" : "Attempting to run 'timeout' action.",
+                    "action.console" : "Attempting to run 'console' action.",
+                    "action.webhook" : "Attempting to run 'webhook' action.",
+                    "action.conditional" : "Attempting to run 'conditional' action.",
+                    "action.tts" : "Attempting to run 'tts' action.",
+                    "action.variables" : "Attempting to format actiion variables.",
+                    "vayl.prompt" : "Attempting to print in Vayl console.",
+                    "vayl.updatevariable" : "Attempting to update Vayl variable.",
+                    "vayl.issubbed" : "Attempting to check if user is subscribed.",
+                    "vayl.ismoderator" : "Attempting to check if user is a moderator.",
+                    "vayl.isstreamer" : "Attempting to check if user is the streamer.",
+                    "load.sfx" : "Attempting to load SFX data.",
+                    "load.moderation" : "Attempting to load Moderation data.",
+                    "load.commands" : "Attempting to load Custom Commands.",
+                    "load.timedactions" : "Attempting to load Timed Actions.",
+                    "load.phrases" : "Attempting to load PhraseCheck.",
+                    "command.sfx" : "Attempting to run an SFX command.",
+                    "command.sfxtoggle" : "Attempting to run '!sfxtoggle' command.",
+                    "command.quote" : "Attempting to run '!quote' command.",
+                    "command.quotes" : "Attempting to run '!quotes' command.",
+                    "command.settitle" : "Attempting to run '!settitle' command.",
+                    "command.setgame" : "Attempting to run '!setgame' command.",
+                    "command.game" : "Attempting to run '!game' command.",
+                    "command.uptime" : "Attempting to run '!uptime' command.",
+                    "command.followage" : "Attempting to run '!followage' command.",
+                    "command.custom" : "Attempting to run a custom command.",
+                    "command.debug" : "Attempting to run '!debug' command.",
+                    "command.reload" : "Attempting to run '!reload' command.",
+                    "event.on_ready" : "Attempting to handle VaylReady event.",
+                    "event.on_message" : "Attempting to handle Message event.",
+                    "event.on_raid" : "Attempting to handle Raid event.",
+                    "event.on_ad" : "Attempting to handle AD event.",
+                    "event.on_shoutout_give" : "Attempting to handle ShoutoutGive event.",
+                    "event.on_shoutout_receieve" : "Attempting to handle ShoutoutReceive event.",
+                    "event.on_poll_start" : "Attempting to handle PollStart event.",
+                    "event.on_poll_end" : "Attempting to handle PollEnd event.",
+                    "event.on_prediction_start" : "Attempting to handle PredictionStart event.",
+                    "event.on_prediction_lock" : "Attempting to handle PredictionLock event.",
+                    "event.on_prediction_end" : "Attempting to handle PredictionEnd event.",
+                    "event.on_hype_train" : "Attempting to handle HypeTrain event.",
+                    "event.on_offline" : "Attempting to handle StreamOffline event.",
+                    "event.on_online" : "Attempting to handle StreamOnline event.",
+                    "event.on_follow" : "Attempting to handle Follow event.",
+                    "event.on_sub" : "Attempting to handle Sub event.",
+                    "event.on_bits" : "Attempting to handle Bit event.",
+                    "event.on_redeem" : "Attempting to handle Redeem event.",
+                    "stream.viewers" : "Attempting to fetch stream's viewercount." 
+                }
+
+## =================================================================================
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
  
 init()
 asyncio.run(run())
