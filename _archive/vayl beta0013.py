@@ -1,4 +1,4 @@
-__version__ = "beta0012"
+__version__ = "beta0013"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -1537,7 +1537,7 @@ async def runActions (actions, variables):
                         counter += 0 if follower.user_name.lower() == "vaylbot" else 1
                     adata[key] = re.sub(r"\[followers\]", str(counter), adata[key])
                     
-                if ["subscribers"] in adata[key]:
+                if "[subscribers]" in adata[key]:
                     counter = 0
                     async for sub in sv["twitch"].get_broadcaster_subscriptions(sv["streamer"].id):
                         counter += 0 if sub.user_name.lower() == "vaylbot" else 1
@@ -1944,7 +1944,7 @@ async def runActions (actions, variables):
                         counter += 0 if follower.user_name.lower() == "vaylbot" else 1
                     condition = re.sub(r"\[followers\]", str(counter), condition)
                     
-                if ["subscribers"] in condition:
+                if "[subscribers]" in condition:
                     counter = 0
                     async for sub in sv["twitch"].get_broadcaster_subscriptions(sv["streamer"].id):
                         counter += 0 if sub.user_name.lower() == "vaylbot" else 1

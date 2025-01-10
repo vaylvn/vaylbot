@@ -1,4 +1,4 @@
-__version__ = "beta0012"
+__version__ = "beta0013"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -60,7 +60,7 @@ tts_voice = { "cepstral"        : ["Allison", "Amy", "Belle", "Callie", "Charlie
 ## Bot Variables ===================================================================
 sv = { "id" : "xfc4596ekgo4ewkag6wn01hgs4hfbl", "secret" : "p8wl2zzuk3sgjmbdrlxe9l65xno8wk",
        "version" : "", "twitch" : None, "streamer" : None, "channel" : None, "chat" : None, "live" : False,
-       "alerts" : [], "actions" : [], "commands" : {}, "sfx" : {}, "phrases" : {}, "moderation" : {}, "spoken" : [] }
+       "alerts" : [], "actions" : [], "commands" : {}, "sfx" : {}, "phrases" : {}, "spoken" : [] }
 ## =================================================================================
 
 
@@ -98,90 +98,6 @@ async def on_message (msg: ChatMessage):
     try:
         global sv
         name = msg.user.name
-        
-        ## moderation ==================================================================
-        try:
-            if name.lower() != "vaylbot":
-                
-                ## link protection =========================================================
-                flagged = []
-                if len(sv["moderation"]["link"]["whitelist"]) > 0:
-                    for word in msg.text.split(" "):
-                        info = tldextract.extract(word)
-                        if "http" in word or "www." in word or info.suffix != "":
-                            allowed = False
-                            for whitelist in sv["moderation"]["link"]["whitelist"]:
-                                allowed = (whitelist in word)
-                            if not allowed:
-                                flagged.append(word)
-                else:
-                    for word in msg.text.split(" "):
-                        for blacklist in sv["moderation"]["link"]["blacklist"]:
-                            if blacklist in msg.text:
-                                flagged.append(word)
-                            
-                if len(flagged) > 0:
-                    if not await isModerator(sv["streamer"].id, name) and not await isStreamer(name) and name.lower() not in sv["moderation"]["link"]["permitted-users"]:
-                        
-                        if name not in sv["moderation"]["link"]["warnings"]:
-                            sv["moderation"]["link"]["warnings"][name] = 0
-                            
-                        sv["moderation"]["link"]["warnings"][name] += 1
-                        if sv["moderation"]["link"]["warnings"][name] >= int(sv["moderation"]["link"]["warning"]["limit"]):
-                            
-                            duration = int(sv["moderation"]["link"]["timeout"]["duration"])
-                            
-                            if len(sv["moderation"]["link"]["timeout"]["message"]) > 0:
-                                await sv["chat"].send_message(sv["channel"], sv["moderation"]["link"]["timeout"]["message"].replace("[user]",name).replace("[duration]",str(duration)))
-                                await sv["chat"].send_message(sv["channel"], "Warning " + str(sv["moderation"]["link"]["warnings"][name]) + " of " + str(sv["moderation"]["link"]["warning"]["limit"]))
-                        
-                            async for u in sv["twitch"].get_users(logins = [name]):
-                                await sv["twitch"].ban_user(sv["streamer"].id, sv["streamer"].id, u.id, "Vayl Moderation (Link)", duration)
-                        
-                        else:
-                            if len(sv["moderation"]["link"]["warning"]["message"]) > 0:
-                                await sv["chat"].send_message(sv["channel"], sv["moderation"]["link"]["warning"]["message"].replace("[user]",name))
-
-                        await sv["twitch"].delete_chat_message(sv["streamer"].id, sv["streamer"].id, msg.id)
-                ## =========================================================================
-                
-                
-                ## cap protection ==========================================================
-                cap_count = 0
-                for letter in msg.text:
-                    if letter.isupper():
-                        cap_count += 1
-                        
-                percentage = round(((cap_count / len(msg.text)) * 100))
-                if percentage >= sv["moderation"]["cap"]["threshold-percentage"]:
-                    if not await isModerator(sv["streamer"].id, name) and not await isStreamer(name) and name.lower() not in sv["moderation"]["link"]["permitted-users"]:
-                        
-                        if name not in sv["moderation"]["cap"]["warnings"]:
-                            sv["moderation"]["cap"]["warnings"][name] = 0
-                            
-                        sv["moderation"]["cap"]["warnings"][name] += 1
-                        if sv["moderation"]["cap"]["warnings"][name] >= int(sv["moderation"]["cap"]["warning"]["limit"]):
-                            ## timeout user
-                            
-                            duration = int(sv["moderation"]["cap"]["timeout"]["duration"])
-                            
-                            if len(sv["moderation"]["cap"]["timeout"]["msg.text"]) > 0:
-                                await sv["chat"].send_message(sv["channel"], sv["moderation"]["cap"]["timeout"]["msg.text"].replace("[user]",name).replace("[duration]",str(duration)))
-                                await sv["chat"].send_message(sv["channel"], "Warning " + str(sv["moderation"]["cap"]["warnings"][name]) + " of " + str(sv["moderation"]["cap"]["warning"]["limit"]))
-                        
-                            async for u in sv["twitch"].get_users(logins = [name]):
-                                await sv["twitch"].ban_user(sv["streamer"].id, sv["streamer"].id, u.id, "Vayl Moderation (Cap)", duration)
-                        
-                        else:
-                            if len(sv["moderation"]["cap"]["warning"]["msg.text"]) > 0:
-                                await sv["chat"].send_message(sv["channel"], sv["moderation"]["cap"]["warning"]["msg.text"].replace("[user]",name))
-
-                        await sv["twitch"].delete_chat_message(sv["streamer"].id, sv["streamer"].id, msg.id)
-                ## =========================================================================
-        except Exception as e:
-            logError(tag = "chat.moderation")
-        ## =========================================================================
-
         
         ## phrase check ================================================================
         try:
@@ -1599,7 +1515,7 @@ async def runActions (actions, variables):
 
    
         except Exception as e:
-            logError(tag = "action.variables")
+            logError(tag = "action.variables", additional_details = [a])
 
 
         ## ModifySource ============================================================
@@ -1630,7 +1546,7 @@ async def runActions (actions, variables):
                 if not found:
                     prompt ("misc", "Unable to find source: " + adata["source"])
             except Exception as e:
-                logError(tag = "obs.modifysource")
+                logError(tag = "obs.modifysource", additional_details = [a])
         ## =========================================================================
 
 
@@ -1642,7 +1558,7 @@ async def runActions (actions, variables):
                 else:
                     prompt ("error", "Scene not found: " + adata["scene"])
             except Exception as e:
-                logError(tag = "obs.scene")
+                logError(tag = "obs.scene", additional_details = [a])
         ## =========================================================================
         
         
@@ -1665,7 +1581,7 @@ async def runActions (actions, variables):
                 data["text"] = adata["text"]
                 cl.set_input_settings(adata["source"], data, True)
             except Exception as e:
-                logError(tag = "obs.label")
+                logError(tag = "obs.label", additional_details = [a])
         ## =========================================================================
         
         
@@ -1677,7 +1593,7 @@ async def runActions (actions, variables):
                 data["file"] = adata["filepath"]
                 cl.set_input_settings(adata["source"], data, True)
             except Exception as e:
-                logError(tag = "obs.image")
+                logError(tag = "obs.image", additional_details = [a])
         ## =========================================================================
 
         
@@ -1689,7 +1605,7 @@ async def runActions (actions, variables):
                 data["local_file"] = adata["filepath"]
                 cl.set_input_settings(adata["source"], data, True)
             except Exception as e:
-                logError(tag = "obs.mediafile")
+                logError(tag = "obs.mediafile", additional_details = [a])
         ## =========================================================================
 
 
@@ -1707,7 +1623,7 @@ async def runActions (actions, variables):
                                           "previous" : "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PREVIOUS"}
                     cl.trigger_media_input_action(adata["source"], slideshow_actions[adata["state"]])
             except Exception as e:
-                logError(tag = "obs.slideshow")
+                logError(tag = "obs.slideshow", additional_details = [a])
         ## =========================================================================
 
         
@@ -1716,7 +1632,7 @@ async def runActions (actions, variables):
             try:
                 cl.set_source_filter_enabled(adata["source"], adata["filter"], (adata["enabled"].lower() == "true"))
             except Exception as e:
-                logError(tag = "obs.filter")
+                logError(tag = "obs.filter", additional_details = [a])
         ## =========================================================================
         
         
@@ -1725,7 +1641,7 @@ async def runActions (actions, variables):
             try:
                 await asyncio.sleep(float(adata["time"]))
             except Exception as e:
-                logError(tag = "action.wait")
+                logError(tag = "action.wait", additional_details = [a])
         ## =========================================================================
 
 
@@ -1734,7 +1650,7 @@ async def runActions (actions, variables):
             try:
                 await sv["chat"].send_message(sv["channel"], adata["message"])
             except Exception as e:
-                logError(tag = "action.chat")
+                logError(tag = "action.chat", additional_details = [a])
         ## =========================================================================
 
 
@@ -1750,7 +1666,7 @@ async def runActions (actions, variables):
                 with open(os.getcwd() + "\\data\\variables\\text\\" + adata["name"] + ".txt", 'w', encoding = "utf-8") as file:
                     file.write(text + str(adata["text"]) if adata["modifier"] == "append" else str(adata["text"]))
             except Exception as e:
-                logError(tag = "action.text")
+                logError(tag = "action.text", additional_details = [a])
         ## =========================================================================
         
         
@@ -1767,7 +1683,7 @@ async def runActions (actions, variables):
                 with open(os.getcwd() + "\\data\\variables\\boolean\\" + adata["name"] + ".txt", 'w', encoding = "utf-8") as f:
                     f.write(str(value)) 
             except Exception as e:
-                logError(tag = "action.boolean")
+                logError(tag = "action.boolean", additional_details = [a])
         ## =========================================================================
         
         
@@ -1787,7 +1703,7 @@ async def runActions (actions, variables):
                 with open(os.getcwd() + "\\data\\variables\\counter\\" + adata["name"] + ".txt", 'w', encoding = "utf-8") as file:
                     file.write(str(counter))
             except Exception as e:
-                logError(tag = "action.counter")
+                logError(tag = "action.counter", additional_details = [a])
         ## =========================================================================
 
 
@@ -1807,7 +1723,7 @@ async def runActions (actions, variables):
                 with open(os.getcwd() + "\\data\\variables\\list\\" + adata["name"] + ".txt", 'w', encoding = "utf-8") as file:
                     file.writelines(f"{line}\n" for line in list if line)
             except Exception as e:
-                logError(tag = "action.list")
+                logError(tag = "action.list", additional_details = [a])
         ## =========================================================================
 
 
@@ -1816,7 +1732,7 @@ async def runActions (actions, variables):
             try:
                 await sv["twitch"].send_chat_announcement(sv["streamer"].id, sv["streamer"].id, adata["message"], adata["color"])
             except Exception as e:
-                logError(tag = "action.announce")
+                logError(tag = "action.announce", additional_details = [a])
         ## =========================================================================
 
     
@@ -1828,7 +1744,7 @@ async def runActions (actions, variables):
                 elif adata["modifier"] == "remove":
                     await sv["twitch"].remove_channel_vip(sv["streamer"].id, adata["username"])
             except Exception as e:
-                logError(tag = "action.vip")
+                logError(tag = "action.vip", additional_details = [a])
         ## =========================================================================
         
 
@@ -1837,7 +1753,7 @@ async def runActions (actions, variables):
             try:
                 subprocess.run(adata["command"], shell = False)
             except Exception as e:
-                logError(tag = "action.cmd")
+                logError(tag = "action.cmd", additional_details = [a])
         ## =========================================================================
 
 
@@ -1853,7 +1769,7 @@ async def runActions (actions, variables):
                 if not found:
                     prompt ("misc", "Unable to find audio file: " + adata["sound"])
             except Exception as e:
-                logError(tag = "action.playsound")
+                logError(tag = "action.playsound", additional_details = [a])
         ## =========================================================================
 
     
@@ -1863,7 +1779,7 @@ async def runActions (actions, variables):
                 async for u in sv["twitch"].get_users(logins = [adata["username"]]):
                     await sv["twitch"].ban_user(sv["streamer"].id, sv["streamer"].id, u.id, adata["reason"], int(adata["duration"]))
             except Exception as e:
-                logError(tag = "action.timeout")
+                logError(tag = "action.timeout", additional_details = [a])
         ## =========================================================================
 
 
@@ -1872,7 +1788,7 @@ async def runActions (actions, variables):
             try:
                 await sendToConsole(adata["message"])
             except Exception as e:
-                logError(tag = "action.console")
+                logError(tag = "action.console", additional_details = [a])
         ## =========================================================================
 
     
@@ -1916,7 +1832,7 @@ async def runActions (actions, variables):
                     response = webhook.execute()
 
             except Exception as e:
-                logError(tag = "action.webhook")
+                logError(tag = "action.webhook", additional_details = [a])
         ## =========================================================================
 
         
@@ -2048,7 +1964,7 @@ async def runActions (actions, variables):
                 await runActions(data[result], variables)
                             
             except Exception as e:
-                logError(tag = "action.conditional")
+                logError(tag = "action.conditional", additional_details = [a])
         ## =========================================================================
 
 
@@ -2178,16 +2094,19 @@ async def runActions (actions, variables):
                     prompt("misc", "Unable to play TTS, message length exceeds limit of " + adata["limit"] + " characters. (" + str(len(adata["message"])) + ")")
             
             except Exception as e:
-                logError(tag = "action.tts")
+                logError(tag = "action.tts", additional_details = [a])
         ## =========================================================================
         
         
         ## createclip ==============================================================
         if action == "createclip":
-            clip = await sv["twitch"].create_clip(sv["streamer"].id)
-            clips = await sv["twitch"].get_clips(broadcaster_id = sv["streamer"].id, clip_id = clip.id)
-            async for c in clips:
-                await updateVariable("latest-vayl-clip", c.url)
+            try:
+                clip = await sv["twitch"].create_clip(sv["streamer"].id)
+                clips = await sv["twitch"].get_clips(broadcaster_id = sv["streamer"].id, clip_id = clip.id)
+                async for c in clips:
+                    await updateVariable("latest-vayl-clip", c.url)
+            except Exception as e:
+                logError(tag = "action.clip", additional_details = [a])
         ## =========================================================================
         
         
@@ -2343,7 +2262,7 @@ def sanitize_path(path, base_path=None):
     except ValueError:
         return path  # Return the original if it cannot be made relative
 
-def logError(tag=None):
+def logError(tag = None, additional_details = None):
     # Display error prompt
     prompt("error", "Error Detected")
     base_path = os.getcwd()
@@ -2373,7 +2292,16 @@ def logError(tag=None):
         log_file.write(f"User: {log_details['User']}\n")
         log_file.write(f"Version: {log_details['Version']}\n")
         log_file.write(f"Cause: {log_details['Cause']}\n")
-        log_file.write(f"Error Line: {log_details['Error Line']}\n\n")
+        log_file.write(f"Error Line: {log_details['Error Line']}\n")
+        
+        if additional_details is not None:
+            log_file.write("Additional Info:\n"
+            for ad_line in additional_details:
+                log_file.write("- " + ad_line + "\n")
+            log_file.write("\n")
+        else:
+            log_file.write("Additional Info: None\n\n"
+        
         log_file.write("Stack Trace:\n")
         log_file.write(log_details["Stack Trace"])
 
@@ -2551,6 +2479,7 @@ error_reference = { "chat.moderation" : "Applying ModerationCheck to chat messag
                     "action.webhook" : "Attempting to run 'webhook' action.",
                     "action.conditional" : "Attempting to run 'conditional' action.",
                     "action.tts" : "Attempting to run 'tts' action.",
+                    "action.clip" : "Attempting to run 'createclip' action",
                     "action.variables" : "Attempting to format actiion variables.",
                     "vayl.prompt" : "Attempting to print in Vayl console.",
                     "vayl.updatevariable" : "Attempting to update Vayl variable.",
