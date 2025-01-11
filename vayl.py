@@ -340,7 +340,7 @@ async def on_sub (d, data):
         alert["gifter"] = data["display_name"] if data["is_gift"] else ""
         alert["gifted"] = data["recipient_display_name"] if data["is_gift"] else ""
         alert["sub-message"] = "" if data["is_gift"] else data["sub_message"]["message"]
-        alert["total-months"] = data["cumulative_months"] if data["is_gift"] == False else ""
+        alert["total-months"] = "" if data["is_gift"] else data["cumulative_months"]
         
         if data["is_gift"]:
             await updateVariable("latest-giftsub-gifter", data["display_name"])  
@@ -1403,7 +1403,7 @@ async def runActions (actions, variables):
         arguments = a.split(" ; ")[1:]
         
         if cl is None:
-            if action in ["obs:scene","obs:show","obs:hide","obs:toggle","obs:label","obs:image","obs:mediafile","obs:slideshow", "obs:filter"] or "[obs:scene]" in action:
+            if action in ["obs:scene","obs:show","obs:hide","obs:toggle","obs:label","obs:image","obs:mediafile","obs:slideshow", "obs:filter"] or "[obs:scene]" in a:
                 with open(os.getcwd() + "\\configuration\\configuration.yml", 'r', encoding = "utf-8") as file:
                     data = yaml.safe_load(file)
                     cl = obs.ReqClient(host='localhost', port=4455, password = data["obs-password"])
@@ -1490,8 +1490,8 @@ async def runActions (actions, variables):
                     adata[key] = re.sub(r"\[rfollower\]", randomFollower, adata[key])
 
                 if "[obs:scene]" in adata[key]:
-                    scene = cl.get_current_program_scene()
-                    adata[key] = re.sub(r"\[obs:scene\]", scene, adata[key])
+                    scene = cl.get_current_program_scene().__dict__["current_program_scene_name"]
+                    adata[key] = adata[key].replace("[obs:scene]", scene)
 
                 if "[ruser]" in adata[key]:
                     chatters = []
@@ -1532,7 +1532,7 @@ async def runActions (actions, variables):
                 if "[xstring:" in adata[key]:
                     string = adata[key].split(":")[1]
                     amount = adata[key].split(":")[2].split("]")[0]
-                    adata[key] = re.sub(r"\[xstring:([^\:]+):(\d+)\]", repeatString, adata[key])
+                    adata[key] = re.sub(r"\[xstring:([^\:]+):(-?\d+)\]", repeatString, adata[key])
 
         
 
@@ -1995,8 +1995,8 @@ async def runActions (actions, variables):
                     if "[xstring:" in word:
                         string = word.split(":")[1]
                         amount = word.split(":")[2].split("]")[0]
-                        condition = re.sub(r"\[xstring:([^\:]+):(\d+)\]", repeatString, condition)
-
+                        condition = re.sub(r"\[xstring:([^\:]+):(-?\d+)\]", repeatString, condition)
+                        
                 # print ("condition: " + condition)
                 # print (eval(condition))
                 
