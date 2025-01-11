@@ -340,7 +340,7 @@ async def on_sub (d, data):
         alert["gifter"] = data["display_name"] if data["is_gift"] else ""
         alert["gifted"] = data["recipient_display_name"] if data["is_gift"] else ""
         alert["sub-message"] = "" if data["is_gift"] else data["sub_message"]["message"]
-        alert["total-months"] = data["cumulative_months"] if data["is_gift"] == False else ""
+        alert["total-months"] = data["cumulative_months"] if data["is_gift"] else ""
         
         if data["is_gift"]:
             await updateVariable("latest-giftsub-gifter", data["display_name"])  
@@ -484,7 +484,7 @@ async def c_custom (cmd: ChatCommand):
                     if "vip-only" in data and data["vip-only"] == True and not "vip" in cmd.user.badges:
                         return
                         
-            if await isStreamer(user) or (time.time() - sv["commands"][cmd.name]["user-cooldown"][user] >= data["command"][cmd.name]["cooldown"]):
+            if await isStreamer(user) or (time.time() - sv["commands"][cmd.name]["user-cooldown"][user] >= data["command"][command]["cooldown"]):
                 command = {"user":user, "cmdtext":" ".join(arguments)}
                 for i in range (0, 9999):
                     command["arg" + str(i)] = "" if i >= len(arguments) else (arguments[i].replace("@","",1))
@@ -1403,11 +1403,10 @@ async def runActions (actions, variables):
         arguments = a.split(" ; ")[1:]
         
         if cl is None:
-            if action in ["obs:scene","obs:show","obs:hide","obs:toggle","obs:label","obs:image","obs:mediafile","obs:slideshow", "obs:filter"] or "[obs:scene]" in action:
+            if action in ["obs:scene","obs:show","obs:hide","obs:toggle","obs:label","obs:image","obs:mediafile","obs:slideshow", "obs:filter"]:
                 with open(os.getcwd() + "\\configuration\\configuration.yml", 'r', encoding = "utf-8") as file:
                     data = yaml.safe_load(file)
                     cl = obs.ReqClient(host='localhost', port=4455, password = data["obs-password"])
-            
         
         adata = {}
         for i in range(0, len(arguments)):
@@ -1433,23 +1432,9 @@ async def runActions (actions, variables):
                             pass
                             # print (e)
                 
-                
-                
                 if "[vayl:" in adata[key]:
                     with open(os.getcwd() + "\\data\\variables\\vayl\\" + adata[key].split("[vayl:")[1][:-1] + ".txt", 'r', encoding = "utf-8") as f:
                         adata[key] = re.sub(r"\[vayl:([a-zA-Z0-9_]+)\]", adata[key].split("[vayl:")[1][:-1], adata[key])
-            
-                
-                if "[user:" in adata[key] and ":game]" in adata[key]:
-                    try:
-                        user = adata[key].split(":")[1]
-                        async for users in twitch.get_users(logins = [user]):
-                            infos = await twitch.get_channel_information(users.id)
-                            info = infos[0]
-                            game = info.game_name
-                            adata[key] = adata[key].replace("[user:" + user + ":game]", game)
-                    except:
-                        pass
             
                 def randomNumber (match):
                     min_value = int(match.group(1))
@@ -1488,10 +1473,6 @@ async def runActions (actions, variables):
                         return str(random.choice(followers))
                     
                     adata[key] = re.sub(r"\[rfollower\]", randomFollower, adata[key])
-
-                if "[obs:scene]" in adata[key]:
-                    scene = cl.get_current_program_scene()
-                    adata[key] = re.sub(r"\[obs:scene\]", scene, adata[key])
 
                 if "[ruser]" in adata[key]:
                     chatters = []
@@ -1877,8 +1858,6 @@ async def runActions (actions, variables):
                 for tag in variables:
                     condition = condition.replace("[" + tag + "]", str(variables[tag]))
                              
-                
-                             
                 if "[followers]" in condition:
                     counter = 0
                     async for follower in await sv["twitch"].get_channel_followers(broadcaster_id=sv["streamer"].id):
@@ -1938,18 +1917,7 @@ async def runActions (actions, variables):
                     if "[vayl:" in word:
                         with open(os.getcwd() + "\\data\\variables\\vayl\\" + adata[key].split("[vayl:")[1][:-1] + ".txt", 'r', encoding = "utf-8") as f:
                             condition = re.sub(r"\[vayl:([a-zA-Z0-9_]+)\]", adata[key].split("[vayl:")[1][:-1], condition)
-                
-                    if "[user:" in word and ":game]" in word:
-                        try:
-                            user = word.split(":")[1]
-                            async for users in twitch.get_users(logins = [user]):
-                                infos = await twitch.get_channel_information(users.id)
-                                info = infos[0]
-                                game = info.game_name
-                                condition = condition.replace("[user:" + user + ":game]", game)
-                        except:
-                            pass
-                
+                    
                     if "[counter:" in word:
                         with open(os.getcwd() + "\\data\\variables\\counter\\" + word.split("[counter:")[1][:-1] + ".txt", "r", encoding = "utf-8") as f:
                             condition = condition.replace("[counter:" + word.split("[counter:")[1][:-1] + "]", f.read())
