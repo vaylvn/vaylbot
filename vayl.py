@@ -1548,7 +1548,8 @@ async def runActions (actions, variables):
                 for scene in sv["obs"]["scenes"]:
                     for item in cl.get_scene_item_list(scene).__dict__["scene_items"]:
                         if source_name == item["sourceName"]:
-                            id = cl.get_scene_item_id(scene, adata["source"], offset = None).__dict__["scene_item_id"] 
+                            id = item['sceneItemId']
+                            # id = cl.get_scene_item_id(scene, adata["source"], offset = None).__dict__["scene_item_id"] 
                             if "show" in source_action or "hide" in source_action:
                                 cl.set_scene_item_enabled(scene, id, True if "show" in source_action else False)
                             else:
