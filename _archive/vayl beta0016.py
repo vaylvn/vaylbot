@@ -1,4 +1,4 @@
-__version__ = "beta0017"
+__version__ = "beta0016"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -56,19 +56,6 @@ tts_voice = { "cepstral"        : ["Allison", "Amy", "Belle", "Callie", "Charlie
               "voiceforge"      : ["Conrad", "Designer", "Diesel", "Dog", "Evilgenius", "Frank", "French-fry", "Gregory", "Jerkface", "JerseyGirl", "Kayla", "Kevin", "Kidaroo", "Princess", "RansomNote", "Robot", "Shygirl", "Susan", "Tamika", "TopHat", "Vixen", "Vlad", "Warren", "Wiseguy", "Zach", "Obama"]}
 ## =================================================================================
 
-## Directory =======================================================================
-vdir = {"home" : os.getcwd()}
-vdir["data"] = os.path.join(vdir["home"], "data")
-for path in ["logs","resources","variables"]:
-    vdir[path] = os.path.join(vdir["data"], path)
-for path in ["sounds"]:
-    vdir[path] = os.path.join(vdir["resources"], path)
-for path in ["boolean","counter","list","text","vayl"]:
-    vdir[path] = os.path.join(vdir["variables"], path)
-vdir["configuration"] = os.path.join(vdir["home"], "configuration")
-for path in ["conditionals","event","webhook"]:
-    vdir[path] = os.path.join(vdir["configuration"], path)
-## =================================================================================
 
 ## Bot Variables ===================================================================
 sv = { "id" : "xfc4596ekgo4ewkag6wn01hgs4hfbl", "secret" : "p8wl2zzuk3sgjmbdrlxe9l65xno8wk",
@@ -114,7 +101,7 @@ async def on_message (msg: ChatMessage):
         
         ## phrase check ================================================================
         try:
-            with open(os.path.join(vdir["configuration"], "phrases.yml"), 'r', encoding = "utf-8") as file:
+            with open(os.getcwd() + "\\configuration\\phrases.yml", 'r', encoding = "utf-8") as file:
                 data = yaml.safe_load(file)
                 for phrase, info in data["phrase"].items():
                     if (info["type"] == "contains" and phrase.lower() in msg.text.lower()) or (info["type"] == "matches" and phrase.lower() == msg.text.lower()):
@@ -397,7 +384,7 @@ async def on_redeem (d, data):
         if "user_input" in redeem:
             alert["user_input"] = redeem["user_input"]
             
-        with open(os.path.join(vdir["configuration"], "redeems.yml"), 'r', encoding = "utf-8") as file:
+        with open(os.getcwd() + "\\configuration\\redeems.yml", 'r', encoding = "utf-8") as file:
             redeem_data = yaml.safe_load(file)
             for redeems in redeem_data["redeem"].keys():
                 if redeems.lower() in redeem["reward"]["title"].lower():
@@ -458,12 +445,12 @@ async def c_debug (cmd: ChatCommand):
             if len(args) >= 3:
                 if "bits" in args[0] and args[1].isalnum() and args[2].isnumeric():
                     await addAlert({"type":"bits","user":args[1],"amount":int(args[2]),"message":"" if len(args) <= 3 else " ".join(args[3:])}, "end")
-                elif "sub" == args[0] and args[1].isalnum() and args[2].isnumeric():
+                elif "sub" in args[0] and args[1].isalnum() and args[2].isnumeric():
                     
                     tier = args[2].lower if args[2].lower() in ["1","2","3","prime"] else "1"
                     await addAlert({"type":"sub","tier":tier,"user":args[1],"total-months":args[2],"sub-message": "" if len(args) <= 3 else " ".join(args[3:]) }, "end")
             if len(args) == 4:
-                if "giftsub" == args[0] and args[1].isalnum() and args[2].isalnum() and args[3].isnumeric():
+                if "giftsub" in args[0] and args[1].isalnum() and args[2].isalnum() and args[3].isnumeric():
                     for i in range(0, int(args[3])):
                         await addAlert({"type":"giftsub", "gifter":args[1], "tier":args[2], "gifted":"ExampleUsername"}, "end")
     except Exception as e:
@@ -484,7 +471,7 @@ async def c_custom (cmd: ChatCommand):
             if user not in sv["commands"][cmd.name]["user-cooldown"]:
                 sv["commands"][cmd.name]["user-cooldown"][user] = 0
                 
-            with open(os.path.join(vdir["configuration"], "commands.yml"), 'r', encoding = "utf-8") as file:
+            with open(os.getcwd() + "\\configuration\\commands.yml", 'r', encoding = "utf-8") as file:
                 data = yaml.full_load(file)
                 
                 if not await isStreamer(user):
@@ -562,6 +549,7 @@ async def c_setgame (cmd: ChatCommand):
             async for games in sv["twitch"].get_games(names = [cmd.parameter]):
                 game["id"] = games.id
                 game["name"] = games.name
+            
             if game["id"] != "":
                 await sv["twitch"].modify_channel_information(sv["streamer"].id, game_id = game["id"])
                 await sv["chat"].send_message(sv["channel"], "Game has been set to: " + game["name"])
@@ -586,7 +574,7 @@ async def c_settitle (cmd: ChatCommand):
 ## Quote ===========================================================================
 async def c_quote (cmd: ChatCommand):
     try:
-        f = open(os.path.join(vdir["resources"], "quotes.yml"), 'a+', encoding = "utf-8")
+        f = open(os.getcwd() + "\\data\\resources\\quotes.yml", 'a+', encoding = "utf-8")
         f.seek(0)
         quotes = f.readlines()
         
@@ -619,7 +607,7 @@ async def c_quote (cmd: ChatCommand):
         
 async def c_quotes (cmd: ChatCommand):
     try:
-        f = open(os.path.join(vdir["resources"], "quotes.yml"), 'r', encoding = "utf-8")
+        f = open(os.getcwd() + "\\data\\resources\\quotes.yml", 'r', encoding = "utf-8")
         total = len(f.readlines())
         await sv["chat"].send_message(sv["channel"], str(total) + " Available Quotes.")
     except Exception as e:
@@ -631,10 +619,10 @@ async def c_quotes (cmd: ChatCommand):
 async def c_sfxtoggle (cmd: ChatCommand):
     try:
         if await isStreamer(cmd.user.name) or await isModerator(sv["streamer"].id, cmd.user.name):
-            with open(os.path.join(vdir["configuration"], "sfx.yml"), 'r', encoding = "utf-8") as file:
+            with open(os.getcwd() + "\\configuration\\sfx.yml", 'r', encoding = "utf-8") as file:
                 data = yaml.safe_load(file)
                 data["enabled"] = not data["enabled"]
-                with open(os.path.join(vdir["configuration"], "sfx.yml"), 'w', encoding = "utf-8") as yaml_file:
+                with open(os.getcwd() + "\\configuration\\sfx.yml", 'w', encoding = "utf-8") as yaml_file:
                     yaml.dump(data, yaml_file, default_flow_style=False, sort_keys=False)
                 sv["chat"].send_message(sv["channel"], "SFX: " + ("Enabled" if data["enabled"] == "True" else "Diabled"))
     except Exception as e:
@@ -649,7 +637,7 @@ async def c_sfx (cmd: ChatCommand):
     
         if cmd.name.lower() in sv["sfx"]["sounds"]:
         
-            with open(os.path.join(vdir["configuration"], "sfx.yml"), 'r', encoding = "utf-8") as file:
+            with open(os.getcwd() + "\\configuration\\sfx.yml", 'r', encoding = "utf-8") as file:
                 s_data = yaml.safe_load(file)
                 if "enabled" in s_data and not s_data["enabled"]:
                     return
@@ -683,8 +671,8 @@ async def c_sfx (cmd: ChatCommand):
             if allowed:
                 for type in [".mp3",".wav"]:
                     try:
-                        if os.path.exists(os.path.join(vdir["sounds"], data["sound"] + type)):
-                            playsound(os.path.join(vdir["sounds"], data["sound"] + type), block = False)
+                        if os.path.exists(os.getcwd() + "\\data\\resources\\sounds\\" + data["sound"] + type):
+                            playsound(os.getcwd() + "\\data\\resources\\sounds\\" + data["sound"] + type, block = False)
                     except:
                         pass
                 #threading.Thread(target=playsound, args=(os.getcwd() + "\\data\\resources\\sounds\\" + data["sound"].replace(".mp3","").replace(".wav",""),), daemon=True).start()
@@ -746,22 +734,25 @@ def indexOBS():
 async def indexOBSAsync():
     global sv
     sv["obs"] = {}
+    
     while True:
-        scenes = []
-        groups = []
+    
+        sv["obs"]["scenes"] = []
+        sv["obs"]["groups"] = []
+    
         try:
             cl = None
             with open(os.getcwd() + "\\configuration\\configuration.yml", 'r', encoding = "utf-8") as file:
                 data = yaml.safe_load(file)
                 cl = obs.ReqClient(host='localhost', port=4455, password = data["obs-password"])
                 for scene in cl.get_scene_list().__dict__["scenes"]:
-                    scenes.append(scene["sceneName"])
+                    sv["obs"]["scenes"].append(scene["sceneName"])
                 for group in cl.get_group_list().__dict__["groups"]:
-                    groups.append(group)
-            sv["obs"]["scenes"] = scenes
-            sv["obs"]["groups"] = groups
+                    sv["obs"]["groups"].append(group)
         except:
             pass
+    
+    
         await asyncio.sleep(60)
 ## =================================================================================
 
@@ -819,17 +810,519 @@ async def manageAlertsAsync():
                 actions = alert["actions"]
                 buffer = alert["buffer"]
             else:
-                with open(os.path.join(vdir["event"], alert["type"] + ".yml"), 'r', encoding = "utf-8") as file:
+                with open(os.getcwd() + "\\configuration\\event\\" + alert["type"] + ".yml", 'r', encoding = "utf-8") as file:
                     data = yaml.safe_load(file)
                     if "enabled" in data and data["enabled"] == True:
                         actions = data["actions"]
                         buffer = data["buffer"]
+                        
+                     
                     
             await runActions(actions, alert)
             for i in range(0, pop_amount):
                 sv["alerts"].pop(0)
             
+            
+            continue
+            
+            ## generic =============================================================
+            if alert["type"] in ["vayl-load", "ad-break", "prediction-created", "prediction-locked", "prediction-ended", "poll-created", "poll-ended", "first-time-chat", "stream-online", "stream-offline","chat", "follow"]:
+                with open(os.getcwd() + "\\configuration\\event\\" + alert["type"] + ".yml", 'r', encoding = "utf-8") as file:
+                    data = yaml.safe_load(file)
+                    if "enabled" in data and data["enabled"]:
+                        actions = data["actions"]
+            ## =====================================================================
+            
+            
+            ## first session chat ==================================================
+            elif "firstsessionchat" in alert["type"]:
+                with open(os.getcwd() + "\\configuration\\event\\first-session-chat.yml", 'r', encoding = "utf-8") as file:
+                    data = yaml.safe_load(file)
+                    if "enabled" in data and data["enabled"]:
+                        for conditional, condition in data["conditionals"].items():
+                            if condition["condition"] == "User sends first message of session":
+                                if condition["value"].lower() == alert["user"].lower():
+                                    actions = condition["actions"]
+                                    break
+            ## =====================================================================
+            
+            
+            ## hypetrain ===========================================================
+            elif "hypetrain" in alert["type"]:
+                with open(os.getcwd() + "\\configuration\\event\\hype-train.yml", 'r', encoding = "utf-8") as file:
+                    data = yaml.safe_load(file)
+                    if "enabled" in data and data["enabled"]:
+                        
+                        complete = False
+                        
+                        ## specific level ==========================================
+                        for conditional, condition in data["conditionals"].items():
+                            if condition["condition"] == "HypeTrain reaches level ..." and str(condition["value"]) == str(alert["level"]):
+                                actions = condition["actions"]
+                                complete = True
+                                break
+                        ## =========================================================
+                        
+                        
+                        ## at least level ==========================================
+                        if not complete:
+                            organise = {}
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "HypeTrain reaches at least level ...":
+                                    organise[conditional] = int(condition["value"])
+                            organised = sorted(organise.items(), key=lambda x:x[1])
+                            
+                            if len (organised) > 0:
+                                marker = None
+                                for c in organised:
+                                    if int(alert["level"]) >= c[1]:
+                                        marker = c
+                                if marker is not None:
+                                    actions = data["conditionals"][marker[0]]["actions"]
+                                    complete = True
+                        ## =========================================================
+                        
+                        
+                        ## any level ===============================================
+                        if not complete:
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "HypeTrain reaches level ..." and str(condition["value"]) == "any":
+                                    actions = condition["actions"]
+                                    complete = True
+                                    break
+                        ## =========================================================
+            ## =====================================================================
+            
+            
+            ## shoutout given ======================================================
+            elif "shoutout-given" in alert["type"]:
+                with open(os.getcwd() + "\\configuration\\event\\shoutout-given.yml", 'r', encoding = "utf-8") as file:
+                    data = yaml.safe_load(file)
+                    if "enabled" in data and data["enabled"]:
+                    
+                        complete = False
+                        
+                        ## specific user ===========================================
+                        for conditional, condition in data["conditionals"].items():
+                            if condition["condition"] == "Given shoutout to user" and condition["value"].lower() == alert["user"].lower():
+                                actions = condition["actions"]
+                                complete = True
+                                break
+                        ## =========================================================
+                        
+                        
+                        ## specifc viewercount =====================================
+                        if not complete:
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "Shoutout contains ... viewers" and str(condition["value"]).lower() == str(alert["viewercount"]):
+                                    actions = condition["actions"]
+                                    complete = True
+                                    break
+                        ## =========================================================
+                        
+                        
+                        ## at least viewercount ====================================
+                        if not complete:
+                            organise = {}
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "Shoutout contains at least ... viewers":
+                                    organise[conditional] = int(condition["value"])
+                            organised = sorted(organise.items(), key=lambda x:x[1])
+                            
+                            if len (organised) > 0:
+                                marker = None
+                                for c in organised:
+                                    if int(alert["viewercount"]) >= c[1]:
+                                        marker = c
+                                if marker is not None:
+                                    actions = data["conditionals"][marker[0]]["actions"]
+                                    complete = True
+                        ## =========================================================
+                        
+                        
+                        ## any =====================================================
+                        if not complete:
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "Given shoutout to user" and str(condition["value"]).lower() == "any":
+                                    actions = condition["actions"]
+                                    complete = True
+                                    break
+                        ## =========================================================
+            ## =====================================================================
+            
+            
+            ## shoutout received ===================================================
+            elif "shoutout-receive" in alert["type"]:
+                with open(os.getcwd() + "\\configuration\\event\\shoutout-receieve.yml", 'r', encoding = "utf-8") as file:
+                    data = yaml.safe_load(file)
+                    if "enabled" in data and data["enabled"]:
+                    
+                        complete = False
+                        
+                        ## specific user ===========================================
+                        if not complete:
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "Received shoutout from user" and condition["value"].lower() == alert["user"].lower():
+                                    actions = condition["actions"]
+                                    complete = True
+                                    break
+                        ## =========================================================
+                    
+                    
+                        ## specific viewercount ====================================
+                        if not complete:
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "Shoutout contains ... viewers" and str(condition["value"]) == str(alert["viewercount"]):
+                                    actions = condition["actions"]
+                                    complete = True
+                                    break
+                        ## =========================================================
+                    
+                    
+                        ## at least viewercount ====================================
+                        if not complete:
+                            organise = {}
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "Shoutout contains at least ... viewers":
+                                    organise[conditional] = int(condition["value"])
+                            organised = sorted(organise.items(), key=lambda x:x[1])
+                            
+                            if len (organised) > 0:
+                                marker = None
+                                for c in organised:
+                                    if int(alert["viewercount"]) >= c[1]:
+                                        marker = c
+                                if marker is not None:
+                                    actions = data["conditionals"][marker[0]]["actions"]
+                                    complete = True
+                        ## =========================================================
+                    
+                    
+                        ## any =====================================================
+                        if not complete:
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "Received shoutout from user" and str(condition["value"]).lower() == "any":
+                                    actions = condition["actions"]
+                                    complete = True
+                                    break
+                        ## =========================================================
+            ## =====================================================================
+            
+            
+            ## sub =================================================================
+            elif "sub" == alert["type"]:
+                with open(os.getcwd() + "\\configuration\\event\\sub.yml", 'r', encoding = "utf-8") as file:
+                    data = yaml.safe_load(file)
+                    if "enabled" in data and data["enabled"]:
+                    
+                        complete = False
+                        
+                        ## specific user ===========================================
+                        if not complete:
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "User subs" and condition["value"].lower() == alert["user"].lower():
+                                    actions = condition["actions"]
+                                    complete = True
+                                    break
+                        ## =========================================================    
+                            
+                            
+                        ## specific sub month streak ===============================
+                        if not complete:
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "User on ... month sub streak" and str(condition["value"]) == str(alert["streak"]):
+                                    actions = condition["actions"]
+                                    complete = True
+                                    break
+                        ## =========================================================  
+                        
+                        
+                        ## at least sub month streak ===============================
+                        if not complete:
+                            organise = {}
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "User on at least ... month sub streak":
+                                    organise[conditional] = int(condition["value"])
+                            organised = sorted(organise.items(), key=lambda x:x[1])
+                            
+                            if len (organised) > 0:
+                                marker = None
+                                for c in organised:
+                                    if int(alert["streak"]) >= c[1]:
+                                        marker = c
+                                if marker is not None:
+                                    actions = data["conditionals"][marker[0]]["actions"]
+                                    complete = True
+                        ## =========================================================  
+                                    
+                                    
+                        ## any sub month streak ====================================
+                        if not complete:
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "User on ... month sub streak" and str(condition["value"]) == "any":
+                                    actions = condition["actions"]
+                                    complete = True
+                                    break
+                        ## =========================================================  
+                        
+                                    
+                        ## specific sub month total ================================
+                        if not complete:
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "User on ... total sub months" and str(condition["value"]) == str(alert["total-months"]):
+                                    actions = condition["actions"]
+                                    complete = True
+                                    break
+                        ## =========================================================  
+                                        
+                                        
+                        ## at least sub month total ================================
+                        if not complete:
+                            organise = {}
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "User on at least ... total sub months":
+                                    organise[conditional] = int(condition["value"])
+                            organised = sorted(organise.items(), key=lambda x:x[1])
+                            
+                            if len (organised) > 0:
+                                marker = None
+                                for c in organised:
+                                    if int(alert["total-months"]) >= c[1]:
+                                        marker = c
+                                if marker is not None:
+                                    actions = data["conditionals"][marker[0]]["actions"]
+                                    complete = True
+                        ## =========================================================  
+                        
+                                    
+                        ## specific user ===========================================
+                        if not complete:
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "User subs" and condition["value"].lower() == "any":
+                                    actions = condition["actions"]
+                                    complete = True
+                                    break
+                        ## =========================================================  
+            ## =====================================================================
+            
+            
+            ## giftsub =============================================================
+            elif "giftsub" in alert["type"]:
+                with open(os.getcwd() + "\\configuration\\event\\giftsub.yml", 'r', encoding = "utf-8") as file:
+                    data = yaml.safe_load(file)
+                    if "enabled" in data and data["enabled"]:
+            
+                        alert["amount"] = 1
+                        for a in sv["alerts"][1:]:
+                            if a["type"] == "giftsub" and a["gifter"] == alert["gifter"]:
+                                alert["amount"] += 1
+                        
+                        complete = False
+                        
+                        ## specific user ===========================================
+                        for conditional, condition in data["conditionals"].items():
+                            if condition["condition"] == "User gifts subs" and condition["value"].lower() == alert["gifter"].lower():
+                                actions = condition["actions"]
+                                complete = True
+                                break
+                        ## =========================================================
+                        
+                        
+                        ## specific sub amount =====================================
+                        if not complete:
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "User gifts ... subs" and str(condition["value"]) == str(amount):
+                                    actions = condition["actions"]
+                                    complete = True
+                                    break
+                        ## =========================================================
+                        
+                        
+                        ## more than sub amount ====================================
+                        if not complete:
+                            organise = {}
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "User gifts at least ... subs":
+                                    organise[conditional] = int(condition["value"])
+                            organised = sorted(organise.items(), key=lambda x:x[1])
+                            
+                            if len (organised) > 0:
+                                marker = None
+                                for c in organised:
+                                    if amount >= c[1]:
+                                        marker = c
+                                if marker is not None:
+                                    actions = data["conditionals"][marker[0]]["actions"]
+                                    complete = True
+                        ## =========================================================
+                        
+                        
+                        ## any user ================================================
+                        if not complete:
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "User gifts subs" and condition["value"].lower() == "any":
+                                    actions = condition["actions"]
+                                    complete = True
+                                    break
+                        ## =========================================================
+                        
+                        
+                        ## giftsub was tier x ======================================
+                        if not complete:
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "User gifts tier ... sub" and str(condition["value"]) == str(alert["tier"]):
+                                    actions = condition["actions"]
+                                    complete = True
+                                    break
+                        ## =========================================================
+                        
+                        
+                        ## any =====================================================
+                        if not complete:
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "User gifts subs" and condition["value"].lower() == "any":
+                                    actions = condition["actions"]
+                                    complete = True
+                                    break
+                        ## =========================================================
+                        
+                        
+                        new_sv["alerts"] = []
+                        for i in range(0, len(sv["alerts"])):
+                            if sv["alerts"][i]["type"] == "giftsub":
+                                if sv["alerts"][i]["gifter"] != alert["gifter"]:
+                                    new_sv["alerts"].append(sv["alerts"][i])
+                            else:
+                                new_sv["alerts"].append(sv["alerts"][i])
+                        sv["alerts"] = new_sv["alerts"]
+                        await runActions(actions, alert)
+                        continue
+            ## =====================================================================
+            
+            
+            ## bits ================================================================
+            elif "bits" in alert["type"]:
+                with open(os.getcwd() + "\\configuration\\event\\bits.yml", 'r', encoding = "utf-8") as file:
+                    data = yaml.safe_load(file)
+                    if "enabled" in data and data["enabled"]:
+                    
+                        complete = False
+                        
+                        ## specific user ===========================================
+                        for conditional, condition in data["conditionals"].items():
+                            if condition["condition"] == "User gifts bits" and condition["value"].lower() == alert["user"].lower():
+                                actions = condition["actions"]
+                                complete = True
+                                break
+                        ## =========================================================
+                        
+                        
+                        ## specific bit amount =====================================
+                        if not complete:
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "User gifts ... bits" and str(condition["value"]) == str(alert["amount"]):
+                                    actions = condition["actions"]
+                                    complete = True
+                                    break
+                        ## =========================================================
+                        
+                        
+                        ## more than bit amount ====================================
+                        if not complete:
+                            organise = {}
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "User gifts at least ... bits":
+                                    organise[conditional] = int(condition["value"])
+                            organised = sorted(organise.items(), key=lambda x:x[1])
+                            
+                            if len (organised) > 0:
+                                marker = None
+                                for c in organised:
+                                    if int(alert["amount"]) >= c[1]:
+                                        marker = c
+                                if marker is not None:
+                                    actions = data["conditionals"][marker[0]]["actions"]
+                                    complete = True
+                        ## =========================================================
+                        
+                        
+                        ## any =====================================================
+                        if not complete:
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "User gifts bits" and condition["value"].lower() == "any":
+                                    actions = condition["actions"]
+                                    complete = True
+                                    break
+                        ## =========================================================
+                        
+                        
+            ## =====================================================================
+            
+            
+            ## raids ===============================================================
+            elif "raid" in alert["type"]:
+                with open(os.getcwd() + "\\configuration\\event\\raid.yml", 'r', encoding = "utf-8") as file:
+                    data = yaml.safe_load(file)
+                    if "enabled" in data and data["enabled"]:
+                    
+                        complete = False
+                        
+                        ## specific user ===========================================
+                        for conditional, condition in data["conditionals"].items():
+                            if condition["condition"] == "User raids the channel" and condition["value"].lower() == alert["user"].lower():
+                                actions = condition["actions"]
+                                complete = True
+                                break
+                        ## =========================================================
+                        
+                        
+                        ## specific viewercount ====================================
+                        if not complete:
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "Raid contains ... viewers" and str(condition["value"]) == str(alert["viewercount"]):
+                                    actions = condition["actions"]
+                                    complete = True
+                                    break
+                        ## =========================================================
+                        
+                        
+                        ## more than viewercount ===================================
+                        if not complete:
+                            organise = {}
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "Raid contains at least ... viewers":
+                                    organise[conditional] = int(condition["value"])
+                            organised = sorted(organise.items(), key=lambda x:x[1])
+                            
+                            if len (organised) > 0:
+                                marker = None
+                                for c in organised:
+                                    if int(alert["viewercount"]) >= c[1]:
+                                        marker = c
+                                if marker is not None:
+                                    actions = data["conditionals"][marker[0]]["actions"]
+                                    complete = True
+                        ## =========================================================
+                        
+                        
+                        ## any =====================================================
+                        if not complete:
+                            for conditional, condition in data["conditionals"].items():
+                                if condition["condition"] == "User raids the channel" and condition["value"].lower() == "any":
+                                    actions = condition["actions"]
+                                    complete = True
+                                    break
+                        ## =========================================================
+                        
+            ## =====================================================================
+            
+            
+            await runActions(actions, alert)
+            for i in range(0, pop_amount):
+                sv["alerts"].pop(0)
+            
         await asyncio.sleep(buffer)
+            
 ## =================================================================================
 
 
@@ -903,104 +1396,6 @@ async def runActions (actions, variables):
                             "webhook"        : ["name"],
                             "createclip"     : []}
 
-
-
-    async def processTags (phrase, is_conditional):
-        
-        was_list = False
-        phrase_split = phrase.split(" ")
-        for i in range(0, len(phrase_split)):
-            word = phrase_split[i]
-        
-            for tag, value in variables.items():
-                word = word.replace("[" + tag + "]", str(value))
-        
-            if "[followers]" in word:
-                counter = 0
-                async for follower in await sv["twitch"].get_channel_followers(broadcaster_id=sv["streamer"].id):
-                    counter += 0 if follower.user_name.lower() == "vaylbot" else 1
-                word = word.replace("[followers]", str(counter))
-                
-        
-            if "[rfollower]" in word:
-                followers = []
-                async for follower in await sv["twitch"].get_channel_followers(broadcaster_id=sv["streamer"].id):
-                    if follower.user_name.lower() != "vaylbot":
-                        followers.append(follower.user_name)
-                word = word.replace("[rfollower]", random.choice(followers))
-
-            if "[subscribers]" in word:
-                counter = 0
-                async for sub in await sv["twitch"].get_broadcaster_subscriptions(sv["streamer"].id):
-                    counter += 0 if sub.user_name.lower() == "vaylbot" else 1
-                word = word.replace("[subscribers]", str(counter))
-
-            if "[rsubscriber]" in word:
-                subscribers = []
-                async for sub in await sv["twitch"].get_broadcaster_subscriptions(sv["streamer"].id):
-                    if sub.user_name.lower() != "vaylbot":
-                        subscribers.append(sub.user_name)
-                word = word.replace("[rsubscriber]", random.choice(subscribers))
-
-            if "{viewers}" in word:
-                async for streams in await sv["twitch"].get_streams(user_id = [sv["streamer"].id]):
-                    word = word.replace("[viewers]", str(streams.viewer_count))
-
-            if "[ruser]" in word:
-                chatters = []
-                async for chatter in await sv["twitch"].get_chatters(sv["streamer"].id, sv["streamer"].id):
-                    if chatter.user.name.lower() != "vaylbot":
-                        chatters.append(chatter.user_name)
-                word = word.replace("[ruser]", random.choice(chatters))
-            
-            if "[system:dateus]" in word:
-                word = word.replace("[system:dateus]", date.today().strftime("%m/%d/%y"))
-                
-            if "[system:dateuk]" in word:
-                word = word.replace("[system:dateuk]", date.today().strftime("%d/%m/%y"))    
-            
-            if "[system:time]" in word:
-                word = word.replace("[system:time]", datetime.now().strftime("%H:%M:%S"))
-                
-            if "[uptime:seconds]" in word:
-                uptime = streams.started_at.replace(tzinfo=pytz.UTC)
-                now = datetime.now(tz=pytz.UTC)
-                word = word.replace("[uptime:seconds]", str(int((now - uptime).total_seconds())))
-            
-            for type in ["vayl","counter","text","boolean"]:
-                if "[" + type + ":" in word:
-                    tag = word.split("[" + type + ":")[1].split("]")[0]
-                    with open(os.path.join(vdir["variables"], type, tag + ".txt"), 'r', encoding = "utf-8") as f:
-                        word = word.replace("[" + type + ":" + tag + "]", f.read())
-                    
-            if "[list:" in word:
-                was_list = True
-                tag = word.split("[list:")[1].split("]")[0]
-                with open(os.path.join(vdir["list"], tag + ".txt"), 'r', encoding = "utf-8") as f:
-                    information = ", ".join(f.read().splitlines()) if not is_conditional else '["' + '", "'.join(f.read().splitlines()) + '"]'
-                    word = word.replace("[list:" + tag + "]", information)
-                    
-            if "[rlist:" in word:
-                tag = word.split("[rlist:")[1].split("]")[0]
-                with open(os.path.join(vdir["list"], tag + ".txt"), 'r', encoding = "utf-8") as f:
-                    word = word.replace("[rlist:" + tag + "]", random.choice(f.read().splitlines()))
-                    
-            if "[rnumber:" in word:
-                min = word.split("[rnumber:")[1].split("-")[0]
-                max = word.split("[rnumber:")[1].split("-")[1].split("]")[0]
-                word = re.sub(r"\[rnumber:([+-]?\d+)-([+-]?\d+)\]", str(random.randint(int(min), int(max))), word)
-                    
-            if "[xstring:" in word:
-                word = re.sub(r"\[xstring:([^:]+):([+-]?\d+)\]", lambda m: m.group(1) * int(m.group(2)) if int(m.group(2)) >= 0 else "", word )
-            
-            phrase_split[i] = word
-        
-        # print (phrase_split)
-        return " ".join(phrase_split)
-        
-
-
-
     for a in actions:
     
         
@@ -1018,50 +1413,6 @@ async def runActions (actions, variables):
         for i in range(0, len(arguments)):
             adata[action_requirements[action][i]] = arguments[i]
 
-        for key, value in adata.items():
-            adata[key] = await processTags(value, False)
-
-        # adata = await process_tags(adata, context = sv, variables = variables, quote_strings = False)
-
-
-
-        
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        '''
         try:
             for key, value in adata.items():
             
@@ -1188,7 +1539,6 @@ async def runActions (actions, variables):
    
         except Exception as e:
             logError(tag = "action.variables", additional_details = [a])
-        '''
 
 
         ## ModifySource ============================================================
@@ -1528,12 +1878,8 @@ async def runActions (actions, variables):
                     with open(os.getcwd() + "\\configuration\\conditionals\\" + adata["name"] + ".yml", 'r', encoding = "utf-8") as file:
                         data = yaml.safe_load(file)
                 
+                condition = data["condition"]
                 
-                condition = await processTags(data["condition"], True)
-
-                
-                
-                '''
                 for tag in variables:
                     condition = condition.replace("[" + tag + "]", str(variables[tag]))
                              
@@ -1659,7 +2005,6 @@ async def runActions (actions, variables):
                         
                 # print ("condition: " + condition)
                 # print (eval(condition))
-                '''
                 
                 result = eval(condition)
                 await runActions(data[result], variables)
@@ -1770,7 +2115,7 @@ async def runActions (actions, variables):
                                     
                                 if data is not None:
                                 
-                                    file_path = os.path.join(vdir["resources"], "tts.wav")
+                                    file_path = os.path.join(os.getcwd(),"data","resources","tts.wav")
                                     with open(file_path, "+wb") as file:
                                         file.write(data)
                                     
@@ -1996,7 +2341,7 @@ def logError(tag = None, additional_details = None):
 
     # Optionally send error to Discord
     try:
-        with open(os.path.join(vdir["configuration"], "configuration.yml"), 'r', encoding="utf-8") as file:
+        with open(os.path.join(base_path, "configuration", "configuration.yml"), 'r', encoding="utf-8") as file:
             config = yaml.safe_load(file)
             if config.get("bug-auto-report", False):
                 webhook = DiscordWebhook(
