@@ -1558,13 +1558,8 @@ async def runActions (actions, variables):
                 if not found:
                     for group in sv["obs"]["groups"]:
                         for item in cl.get_group_scene_item_list(group).__dict__["scene_items"]:
-                            # print (item)
-                            if source_name == item["sourceName"]:
-                            
-                                id = item['sceneItemId']
-                                
-                                # id = cl.get_scene_item_id(group, adata["source"], offset = None).__dict__["scene_item_id"] 
-                                
+                            if source_name in item["sourceName"]:
+                                id = cl.get_scene_item_id(group, adata["source"], offset = None).__dict__["scene_item_id"] 
                                 if "show" in source_action or "hide" in source_action:
                                     cl.set_scene_item_enabled(group, id, True if "show" in source_action else False)
                                 else:
@@ -1725,7 +1720,7 @@ async def runActions (actions, variables):
                 except:
                     pass
                 adata["amount"] = float(adata["amount"])
-                modification = {"increase":(counter + adata["amount"]), "decrease":(counter - adata["amount"]), "multiply":(counter * adata["amount"]), "divide":(counter / adata["amount"]) if adata["amount"] != 0 else 0, "set":adata["amount"]}
+                modification = {"increase":(counter + adata["amount"]), "decrease":(counter - adata["amount"]), "multiply":(counter * adata["amount"]), "divide":(counter / adata["amount"]), "set":adata["amount"]}
                 counter = modification[adata["modifier"]]
                 counter = round(counter) if ".0" in str(round(counter, 1)) else round(counter, 1) 
                 with open(os.getcwd() + "\\data\\variables\\counter\\" + adata["name"] + ".txt", 'w', encoding = "utf-8") as file:
@@ -1814,7 +1809,7 @@ async def runActions (actions, variables):
         ## log =====================================================================
         if action == "console":
             try:
-                print(adata["message"])
+                await sendToConsole(adata["message"])
             except Exception as e:
                 logError(tag = "action.console", additional_details = [a])
         ## =========================================================================
