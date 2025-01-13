@@ -242,7 +242,7 @@ async def on_poll_end (data: ChannelPollEndEvent):
         if event["status"] == "completed":
             alert = {"type":"poll-end", "title":data.event.title}
             id = 1
-            for choice in data.event["choices"]:
+            for choice in event["choices"]:
                 alert["option" + str(id)] = choice.__dict__["title"]
                 alert["option" + str(id) + "bits"] = str(choice.__dict__["bits_votes"])
                 alert["option" + str(id) + "points"] = str(choice.__dict__["channel_points_votes"])
@@ -1844,10 +1844,7 @@ async def printLogo():
              "  ....  #### ####  ....",
              " ....     #####     ....",
              "....       ###       ....",
-             " "," "]
-             
-             
-             
+             " ","     Version " + __version__, " "]
 
     for line in lines:
         sys.stdout.write((" " * 20))
@@ -1856,16 +1853,6 @@ async def printLogo():
             sys.stdout.flush()
             await asyncio.sleep(0.005)   
         print()
-        
-        
-        
-
-    '''         
-    for line in lines:
-        line = (" " * 20) + line.replace("#", Style.BRIGHT + Fore.RED + "#" + Style.RESET_ALL).replace(".", Style.BRIGHT + Fore.WHITE + "#" + Style.RESET_ALL)
-        print (line)
-    '''
-                  
 
 ## =================================================================================
 

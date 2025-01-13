@@ -1,4 +1,4 @@
-__version__ = "beta0018"
+__version__ = "beta0019"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -841,6 +841,10 @@ async def manageAlertsAsync():
                     
                 
                 processed_alerts.append(alert["id"])
+            
+            else:
+                sv["alerts"].pop(0)
+                continue
             
         await asyncio.sleep(buffer)
 ## =================================================================================
