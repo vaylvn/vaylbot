@@ -2022,7 +2022,7 @@ def logError(tag = None, additional_details = None):
 async def updateVariable (name, value):
     try:
         with open(os.getcwd() + "\\data\\variables\\vayl\\" + name + ".txt", 'w', encoding = "utf-8") as file:
-            file.write(value)    
+            file.write(str(value))    
     except Exception as e:
         logError(tag = "vayl.updatevariable")
 ## =================================================================================
