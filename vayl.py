@@ -915,11 +915,36 @@ async def runActions (actions, variables):
                             "tts"            : ["voice", "message", "halt", "limit"],
                             "cmd"            : ["command"],
                             "announce"       : ["message", "color"],
-                            "vip"            : ["modifier", "usernmae"],
+                            "vip"            : ["modifier", "username"],
                             "timeout"        : ["user", "duration", "reason"],
                             "webhook"        : ["name"],
                             "createclip"     : []}
-
+                            
+    
+    action_expected = { "obs:scene"      : "'obs:scene ; <scene_name>'",
+                        "obs:show"       : "'obs:show ; <source_name>'",
+                        "obs:hide"       : "'obs:hide ; <source_name>'",
+                        "obs:toggle"     : "'obs:toggle ; <source_name>'",
+                        "obs:label"      : "'obs:label ; <source_name> ; <text> ; [color]'",
+                        "obs:mediafile"  : "'obs:mediafile ; <source_name> ; <file_path>'",
+                        "obs:slideshow"  : "'obs:slideshow ; <source_name> ; <play/pause/stop/restart/next/previous/position>'",,
+                        "obs:filter"     : "'obs:filter ; <source_name> ; <filter_name> ; <enabled/disabled>'",
+                        "playsound"      : "'playsound ; <sound_name>'",
+                        "wait"           : "'wait ; <seconds>'",
+                        "chat"           : "'chat ; <message>'",
+                        "text"           : "'text ; <variable_name> ; <set/append> ; <text>'",
+                        "counter"        : "'counter ; <variable_name> ; <set/increase/decrease/multiply/divide> ; <amount>'",
+                        "boolean"        : "'boolean ; <variable_name> ; <true/false>'",
+                        "list"           : "'list ; <variable_name> ; <clear/add/remove> ; <text>'",
+                        "console"        : "'console ; <message>'",
+                        "conditional"    : "'conditional ; <conditional_name>'",
+                        "tts"            : "'tts ; <voice> ; <message> ; <true/false> ; <character_limit>'",
+                        "cmd"            : "'cmd ; <command>'",
+                        "announce"       : "'announce ; <message> ; '<blue/green/orange/purple/primary>",
+                        "vip"            : "'vip ; <add/remove> ; <username>'",
+                        "timeout"        : "'timeout ; <username> ; <duration> ; <reason>'",
+                        "webhook"        : "'webhook ; <webhook_name>'",
+                        "createclip"     : "'createclip'"}
 
 
     async def processTags (phrase, is_conditional):
@@ -1010,6 +1035,13 @@ async def runActions (actions, variables):
             if "[xstring:" in word:
                 word = re.sub(r"\[xstring:([^:]+):([+-]?\d+)\]", lambda m: m.group(1) * int(m.group(2)) if int(m.group(2)) >= 0 else "", word )
             
+            if "[ugame:" in word:
+                name = word.split("[ugame:")[1].split("]")[0]
+                async for users in twitch.get_users(logins = [name]):
+                    infos = await twitch.get_channel_information(users.id)
+                    game = infos[0].game_name if infos[0].game_name != "" else "nothing"
+                    word = word.replace("[ugame:" + name + "]", game)
+            
             phrase_split[i] = word
         
         # print (phrase_split)
@@ -1019,8 +1051,8 @@ async def runActions (actions, variables):
 
 
     for a in actions:
+
     
-        
         action = a.split(" ; ")[0]
         arguments = a.split(" ; ")[1:]
         
@@ -1038,174 +1070,6 @@ async def runActions (actions, variables):
         for key, value in adata.items():
             adata[key] = await processTags(value, False)
 
-        # adata = await process_tags(adata, context = sv, variables = variables, quote_strings = False)
-
-
-
-        
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        '''
-        try:
-            for key, value in adata.items():
-            
-                for variable in variables:
-                    adata[key] = adata[key].replace("[" + variable + "]", str(variables[variable]))
-
-                for type in ["counter","text","list","boolean"]:
-                    if "[" + type + ":" in value:
-                        type = type.replace("variable","text")
-                        name = adata[key].split("[" + type + ":")[1].split("]")[0]
-                        try:
-                            with open(os.getcwd() + "\\data\\variables\\" + type + "\\" + name + ".txt", "r", encoding = "utf-8") as f:
-                                list = []
-                                for line in f.readlines():
-                                    list.append(line.rstrip())
-                                adata[key] = adata[key].replace("[" + type + ":" + name + "]", ", ".join(list))
-                        except Exception as e:
-                            pass
-                            # print (e)
-                
-                
-                
-                if "[vayl:" in adata[key]:
-                    with open(os.getcwd() + "\\data\\variables\\vayl\\" + adata[key].split("[vayl:")[1][:-1] + ".txt", 'r', encoding = "utf-8") as f:
-                        adata[key] = re.sub(r"\[vayl:([a-zA-Z0-9_]+)\]", adata[key].split("[vayl:")[1][:-1], adata[key])
-            
-                
-                if "[user:" in adata[key] and ":game]" in adata[key]:
-                    try:
-                        user = adata[key].split(":")[1]
-                        async for users in twitch.get_users(logins = [user]):
-                            infos = await twitch.get_channel_information(users.id)
-                            info = infos[0]
-                            game = info.game_name
-                            adata[key] = adata[key].replace("[user:" + user + ":game]", game)
-                    except:
-                        pass
-            
-                def randomNumber (match):
-                    min_value = int(match.group(1))
-                    max_value = int(match.group(2))
-                    return str(random.randint(min_value, max_value))
-                
-                if "[rnumber:" in adata[key]:
-                    adata[key] = re.sub(r"\[rnumber:(\d+)-(\d+)\]", randomNumber, adata[key])
-                    
-                if "[viewers]" in adata[key]:
-                    try:
-                        async for streams in await sv["twitch"].get_streams(user_id = [sv["streamer"].id]):
-                            adata[key] = re.sub(r"\[viewers\]", str(streams.viewer_count), adata[key])
-                    except:
-                        logError(tag = "stream.viewers")
-                    
-                if "[followers]" in adata[key]:
-                    counter = 0
-                    async for follower in await sv["twitch"].get_channel_followers(broadcaster_id=sv["streamer"].id):
-                        counter += 0 if follower.user_name.lower() == "vaylbot" else 1
-                    adata[key] = re.sub(r"\[followers\]", str(counter), adata[key])
-                    
-                if "[subscribers]" in adata[key]:
-                    counter = 0
-                    async for sub in sv["twitch"].get_broadcaster_subscriptions(sv["streamer"].id):
-                        counter += 0 if sub.user_name.lower() == "vaylbot" else 1
-                    adata[key] = re.sub(r"\[subscribers\]", str(counter), adata[key])    
-
-                if "[rfollower]" in adata[key]:
-                    followers = []
-                    async for follower in await sv["twitch"].get_channel_followers(broadcaster_id=sv["streamer"].id):
-                        followers.append(follower.user_name)
-                    followers.remove("VaylBot")
-                    
-                    def randomFollower (match):
-                        return str(random.choice(followers))
-                    
-                    adata[key] = re.sub(r"\[rfollower\]", randomFollower, adata[key])
-
-                if "[obs:scene]" in adata[key]:
-                    scene = cl.get_current_program_scene().__dict__["current_program_scene_name"]
-                    adata[key] = adata[key].replace("[obs:scene]", scene)
-
-                if "[ruser]" in adata[key]:
-                    chatters = []
-                    async for chatter in await sv["twitch"].get_chatters(sv["streamer"].id, sv["streamer"].id):
-                        chatters.append(chatter.user_name)
-                    chatters.remove("VaylBot")
-                    
-                    def randomUser (match):
-                        return str(random.choice(chatters))
-                    
-                    adata[key] = re.sub(r"\[ruser\]", str(random.choice(chatters)), adata[key])
-
-                def randomList (match):
-                    name = match.group(1)
-                    with open(os.getcwd() + "\\data\\variables\\list\\" + name + ".txt", 'r', encoding = "utf-8") as f:
-                        return str(random.choice(f.read().splitlines()))
-
-                if "[rlist:" in adata[key]:
-                    name = adata[key].split("[rlist:")[1].split("]")[0]
-                    with open(os.getcwd() + "\\data\\variables\\list\\" + name + ".txt", 'r', encoding = "utf-8") as f:
-                        data = f.read().splitlines()
-                        adata[key] = re.sub(r"\[rlist:([a-zA-Z0-9_]+)\]", randomList, adata[key])
-        
-                if "[system:dateus]" in adata[key]:
-                    adata[key] = re.sub(r"\[system:dateus\]", date.today().strftime("%m/%d/%y"), adata[key])
-
-                if "[system:dateuk]" in adata[key]:
-                    adata[key] = re.sub(r"\[system:dateuk\]", date.today().strftime("%d/%m/%y"), adata[key])
-                    
-                if "[system:time]" in adata[key]:
-                    adata[key] = re.sub(r"\[system:time\]", datetime.now().strftime("%H:%M:%S"), adata[key])
-        
-                def repeatString (match):
-                    text = match.group(1)  # Extract the text part
-                    amount = int(match.group(2))  # Extract the amount as an integer
-                    return text * amount
-
-                if "[xstring:" in adata[key]:
-                    string = adata[key].split(":")[1]
-                    amount = adata[key].split(":")[2].split("]")[0]
-                    adata[key] = re.sub(r"\[xstring:([^\:]+):(-?\d+)\]", repeatString, adata[key])
-
-        
-
-   
-        except Exception as e:
-            logError(tag = "action.variables", additional_details = [a])
-        '''
 
 
         ## ModifySource ============================================================
@@ -1242,7 +1106,7 @@ async def runActions (actions, variables):
                 if not found:
                     prompt ("misc", "Unable to find source: " + adata["source"])
             except Exception as e:
-                logError(tag = "obs.modifysource", additional_details = [a])
+                logError(tag = "obs.modifysource", additional_details = [a, "Expecting: " + action_expected["obs:" + source_action]])
         ## =========================================================================
 
 
@@ -1254,7 +1118,7 @@ async def runActions (actions, variables):
                 else:
                     prompt ("error", "Scene not found: " + adata["scene"])
             except Exception as e:
-                logError(tag = "obs.scene", additional_details = [a])
+                logError(tag = "obs.scene", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
         
         
@@ -1277,7 +1141,7 @@ async def runActions (actions, variables):
                 data["text"] = adata["text"]
                 cl.set_input_settings(adata["source"], data, True)
             except Exception as e:
-                logError(tag = "obs.label", additional_details = [a])
+                logError(tag = "obs.label", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
         
         
@@ -1289,7 +1153,7 @@ async def runActions (actions, variables):
                 data["file"] = adata["filepath"]
                 cl.set_input_settings(adata["source"], data, True)
             except Exception as e:
-                logError(tag = "obs.image", additional_details = [a])
+                logError(tag = "obs.image", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
 
         
@@ -1301,7 +1165,7 @@ async def runActions (actions, variables):
                 data["local_file"] = adata["filepath"]
                 cl.set_input_settings(adata["source"], data, True)
             except Exception as e:
-                logError(tag = "obs.mediafile", additional_details = [a])
+                logError(tag = "obs.mediafile", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
 
 
@@ -1319,7 +1183,7 @@ async def runActions (actions, variables):
                                           "previous" : "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PREVIOUS"}
                     cl.trigger_media_input_action(adata["source"], slideshow_actions[adata["state"]])
             except Exception as e:
-                logError(tag = "obs.slideshow", additional_details = [a])
+                logError(tag = "obs.slideshow", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
 
         
@@ -1328,7 +1192,7 @@ async def runActions (actions, variables):
             try:
                 cl.set_source_filter_enabled(adata["source"], adata["filter"], (adata["enabled"].lower() == "true"))
             except Exception as e:
-                logError(tag = "obs.filter", additional_details = [a])
+                logError(tag = "obs.filter", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
         
         
@@ -1337,7 +1201,7 @@ async def runActions (actions, variables):
             try:
                 await asyncio.sleep(float(adata["time"]))
             except Exception as e:
-                logError(tag = "action.wait", additional_details = [a])
+                logError(tag = "action.wait", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
 
 
@@ -1346,7 +1210,7 @@ async def runActions (actions, variables):
             try:
                 await sv["chat"].send_message(sv["channel"], adata["message"])
             except Exception as e:
-                logError(tag = "action.chat", additional_details = [a])
+                logError(tag = "action.chat", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
 
 
@@ -1362,7 +1226,7 @@ async def runActions (actions, variables):
                 with open(os.getcwd() + "\\data\\variables\\text\\" + adata["name"] + ".txt", 'w', encoding = "utf-8") as file:
                     file.write(text + str(adata["text"]) if adata["modifier"] == "append" else str(adata["text"]))
             except Exception as e:
-                logError(tag = "action.text", additional_details = [a])
+                logError(tag = "action.text", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
         
         
@@ -1379,7 +1243,7 @@ async def runActions (actions, variables):
                 with open(os.getcwd() + "\\data\\variables\\boolean\\" + adata["name"] + ".txt", 'w', encoding = "utf-8") as f:
                     f.write(str(value)) 
             except Exception as e:
-                logError(tag = "action.boolean", additional_details = [a])
+                logError(tag = "action.boolean", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
         
         
@@ -1399,7 +1263,7 @@ async def runActions (actions, variables):
                 with open(os.getcwd() + "\\data\\variables\\counter\\" + adata["name"] + ".txt", 'w', encoding = "utf-8") as file:
                     file.write(str(counter))
             except Exception as e:
-                logError(tag = "action.counter", additional_details = [a])
+                logError(tag = "action.counter", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
 
 
@@ -1419,7 +1283,7 @@ async def runActions (actions, variables):
                 with open(os.getcwd() + "\\data\\variables\\list\\" + adata["name"] + ".txt", 'w', encoding = "utf-8") as file:
                     file.writelines(f"{line}\n" for line in list if line)
             except Exception as e:
-                logError(tag = "action.list", additional_details = [a])
+                logError(tag = "action.list", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
 
 
@@ -1428,7 +1292,7 @@ async def runActions (actions, variables):
             try:
                 await sv["twitch"].send_chat_announcement(sv["streamer"].id, sv["streamer"].id, adata["message"], adata["color"])
             except Exception as e:
-                logError(tag = "action.announce", additional_details = [a])
+                logError(tag = "action.announce", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
 
     
@@ -1440,7 +1304,7 @@ async def runActions (actions, variables):
                 elif adata["modifier"] == "remove":
                     await sv["twitch"].remove_channel_vip(sv["streamer"].id, adata["username"])
             except Exception as e:
-                logError(tag = "action.vip", additional_details = [a])
+                logError(tag = "action.vip", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
         
 
@@ -1449,7 +1313,7 @@ async def runActions (actions, variables):
             try:
                 subprocess.run(adata["command"], shell = False)
             except Exception as e:
-                logError(tag = "action.cmd", additional_details = [a])
+                logError(tag = "action.cmd", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
 
 
@@ -1465,7 +1329,7 @@ async def runActions (actions, variables):
                 if not found:
                     prompt ("misc", "Unable to find audio file: " + adata["sound"])
             except Exception as e:
-                logError(tag = "action.playsound", additional_details = [a])
+                logError(tag = "action.playsound", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
 
     
@@ -1475,7 +1339,7 @@ async def runActions (actions, variables):
                 async for u in sv["twitch"].get_users(logins = [adata["username"]]):
                     await sv["twitch"].ban_user(sv["streamer"].id, sv["streamer"].id, u.id, adata["reason"], int(adata["duration"]))
             except Exception as e:
-                logError(tag = "action.timeout", additional_details = [a])
+                logError(tag = "action.timeout", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
 
 
@@ -1484,7 +1348,7 @@ async def runActions (actions, variables):
             try:
                 print(adata["message"])
             except Exception as e:
-                logError(tag = "action.console", additional_details = [a])
+                logError(tag = "action.console", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
 
     
@@ -1528,7 +1392,7 @@ async def runActions (actions, variables):
                     response = webhook.execute()
 
             except Exception as e:
-                logError(tag = "action.webhook", additional_details = [a])
+                logError(tag = "action.webhook", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
 
         
@@ -1545,144 +1409,13 @@ async def runActions (actions, variables):
                     with open(os.getcwd() + "\\configuration\\conditionals\\" + adata["name"] + ".yml", 'r', encoding = "utf-8") as file:
                         data = yaml.safe_load(file)
                 
-                
                 condition = await processTags(data["condition"], True)
-
-                
-                
-                '''
-                for tag in variables:
-                    condition = condition.replace("[" + tag + "]", str(variables[tag]))
-                             
-                
-                             
-                if "[followers]" in condition:
-                    counter = 0
-                    async for follower in await sv["twitch"].get_channel_followers(broadcaster_id=sv["streamer"].id):
-                        counter += 0 if follower.user_name.lower() == "vaylbot" else 1
-                    condition = re.sub(r"\[followers\]", str(counter), condition)
-                    
-                if "[subscribers]" in condition:
-                    counter = 0
-                    async for sub in sv["twitch"].get_broadcaster_subscriptions(sv["streamer"].id):
-                        counter += 0 if sub.user_name.lower() == "vaylbot" else 1
-                    condition = re.sub(r"\[subscribers\]", str(counter), condition)
-                             
-                if "[viewers]" in condition:
-                    try:
-                        async for streams in await sv["twitch"].get_streams(user_id = [sv["streamer"].id]):
-                            condition = re.sub(r"\[viewers\]", str(streams.viewer_count), condition)
-                    except:
-                        logError(tag = "stream.viewers")
-                             
-                if "[rfollower]" in condition:
-                    followers = []
-                    async for follower in await sv["twitch"].get_channel_followers(broadcaster_id=sv["streamer"].id):
-                        followers.append(follower.user_name)
-                    followers.remove("VaylBot")
-                    
-                    def randomFollower (match):
-                        return str(random.choice(followers))
-                    
-                    condition = re.sub(r"\[rfollower\]", randomFollower, condition)
-
-                if "[ruser]" in condition:
-                    chatters = []
-                    async for chatter in await sv["twitch"].get_chatters(sv["streamer"].id, sv["streamer"].id):
-                        chatters.append(chatter.user_name)
-                    chatters.remove("VaylBot")
-                    
-                    def randomUser (match):
-                        return str(random.choice(chatters))
-                    
-                    condition = re.sub(r"\[ruser\]", str(random.choice(chatters)), condition)
-                    
-                if "[system:dateus]" in condition:
-                    condition = re.sub(r"\[system:dateus\]", date.today().strftime("%m/%d/%y"), condition)
-
-                if "[system:dateuk]" in condition:
-                    condition = re.sub(r"\[system:dateuk\]", date.today().strftime("%d/%m/%y"), condition)
-                    
-                if "[system:time]" in condition:
-                    condition = re.sub(r"\[system:time\]", datetime.now().strftime("%H:%M:%S"), condition)
-                    
-                if "[uptime:seconds]" in condition:
-                    uptime = streams.started_at.replace(tzinfo=pytz.UTC)
-                    now = datetime.now(tz=pytz.UTC)
-                    condition = re.sub(r"\[uptime:seconds\]", str(int((now - uptime).total_seconds())), condition)
-                
-                for word in condition.split(" "):
-                    if "[vayl:" in word:
-                        with open(os.getcwd() + "\\data\\variables\\vayl\\" + adata[key].split("[vayl:")[1][:-1] + ".txt", 'r', encoding = "utf-8") as f:
-                            condition = re.sub(r"\[vayl:([a-zA-Z0-9_]+)\]", adata[key].split("[vayl:")[1][:-1], condition)
-                
-                    if "[user:" in word and ":game]" in word:
-                        try:
-                            user = word.split(":")[1]
-                            async for users in twitch.get_users(logins = [user]):
-                                infos = await twitch.get_channel_information(users.id)
-                                info = infos[0]
-                                game = info.game_name
-                                condition = condition.replace("[user:" + user + ":game]", game)
-                        except:
-                            pass
-                
-                    if "[counter:" in word:
-                        with open(os.getcwd() + "\\data\\variables\\counter\\" + word.split("[counter:")[1][:-1] + ".txt", "r", encoding = "utf-8") as f:
-                            condition = condition.replace("[counter:" + word.split("[counter:")[1][:-1] + "]", f.read())
-                    
-                    if "[text:" in word:
-                        with open(os.getcwd() + "\\data\\variables\\text\\" + word.split("[text:")[1][:-1] + ".txt", "r", encoding = "utf-8") as f:
-                            condition = condition.replace("[text:" + word.split("[text:")[1][:-1] + "]", '"' + f.read() + '"')
-                        
-                    if "[boolean:" in word:
-                        with open(os.getcwd() + "\\data\\variables\\boolean\\" + word.split("[boolean:")[1][:-1] + ".txt", "r", encoding = "utf-8") as f:
-                            condition = condition.replace("[boolean:" + word.split("[boolean:")[1][:-1] + "]", f.read().capitalize())
-
-                    if "[list:" in word:
-                        with open(os.getcwd() + "\\data\\variables\\list\\" + word.split("[list:")[1][:-1] + ".txt", "r", encoding = "utf-8") as f:
-                            condition = condition.replace("[list:" + word.split("[list:")[1][:-1] + "]", '["' + '", "'.join(f.read().splitlines()) + '"]')
-
-                    def randomNumber (match):
-                        min_value = int(match.group(1))
-                        max_value = int(match.group(2))
-                        return str(random.randint(min_value, max_value))
-
-                    if "[rnumber:" in word:
-                        min = word.split("[rnumber:")[1].split("-")[0]
-                        max = word.split("[rnumber:")[1].split("-")[1][:-1]
-                        condition = re.sub(r"\[rnumber:(\d+)-(\d+)\]", randomNumber, condition)
-
-                    def randomList (match):
-                        name = match.group(1)
-                        with open(os.getcwd() + "\\data\\variables\\list\\" + name + ".txt", 'r', encoding = "utf-8") as f:
-                            return str(random.choice(f.read().splitlines()))
-                            
-                    if "[rlist:" in word:
-                        name = word.split("[rlist:")[1].split("]")[0]
-                        with open(os.getcwd() + "\\data\\variables\\list\\" + name + ".txt", 'r', encoding = "utf-8") as f:
-                            data = f.read().splitlines()
-                            condition = re.sub(r"\[rlist:([a-zA-Z0-9_]+)\]", randomList, condition)
-
-                    def repeatString (match):
-                        text = match.group(1)  # Extract the text part
-                        amount = int(match.group(2))  # Extract the amount as an integer
-                        return text * amount
-
-                    if "[xstring:" in word:
-                        string = word.split(":")[1]
-                        amount = word.split(":")[2].split("]")[0]
-                        condition = re.sub(r"\[xstring:([^\:]+):(-?\d+)\]", repeatString, condition)
-                        
-                # print ("condition: " + condition)
-                # print (eval(condition))
-                '''
                 
                 result = eval(condition)
                 await runActions(data[result], variables)
                             
             except Exception as e:
-                logError(tag = "action.conditional", additional_details = [a])
+                logError(tag = "action.conditional", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
 
 
@@ -1812,7 +1545,7 @@ async def runActions (actions, variables):
                     prompt("misc", "Unable to play TTS, message length exceeds limit of " + adata["limit"] + " characters. (" + str(len(adata["message"])) + ")")
             
             except Exception as e:
-                logError(tag = "action.tts", additional_details = [a])
+                logError(tag = "action.tts", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
         
         
@@ -1824,7 +1557,7 @@ async def runActions (actions, variables):
                 async for c in clips:
                     await updateVariable("latest-vayl-clip", c.url)
             except Exception as e:
-                logError(tag = "action.clip", additional_details = [a])
+                logError(tag = "action.clip", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
         
         
