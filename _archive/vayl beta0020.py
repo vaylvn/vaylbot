@@ -430,75 +430,11 @@ async def c_reload (cmd: ChatCommand):
 
 
 ## Debug ===========================================================================
-debug_commands = {
-    "sub":                { "defaults":  { "user":"valon", "tier":"1", "months":"12", "message":"" },
-                            "potential": ["user", "tier", "months", "message"] },
-    "giftsub":            { "defaults":  { "user":"valon", "tier":"1", "gifts":"5"},
-                            "potential": ["user", "tier", "gifts"] },
-    "hypetrain":          { "defaults":  { "level":"1"},
-                            "potential": ["level"] },
-    "first-time-chat":    { "defaults":  { "user":"AwesomeUser" },
-                            "potential": ["user"] },
-    "first-session-chat": { "defaults":  { "user":"AwesomeUser" },
-                            "potential": ["user"] },
-    "follow":             { "defaults":  { "user":"AwesomeUser" },
-                            "potential": ["user"] },
-    "raid":               { "defaults":  { "user":"AwesomeUser", "viewers":"1" },
-                            "potential": ["user", "viewers"] },
-    "shoutout-give":      { "defaults":  { "user":"AwesomeUser", "viewers":"1" },
-                            "potential": ["user", "viewers"] },
-    "shoutout-receive":   { "defaults":  { "user":"AwesomeUser", "viewers":"1" },
-                            "potential": ["user", "viewers"] },
-    "bits":               { "defaults":  { "user":"AwesomeUser", "amount":"1", "message":"" },
-                            "potential": ["user", "amount", "message"] }
-}
-
-argument_prefixes = {
-    "u": "user", "user": "user",
-    "t": "tier", "tier": "tier",
-    "m": "months", "months": "months",
-    "g": "gifts", "gifts": "gifts",
-    "msg": "message", "message": "message"
-}
-
 async def c_debug (cmd: ChatCommand):
     try:
         args = cmd.parameter.split(" ")
         if await isStreamer(cmd.user.name):
         
-            if len(args) > 0:
-                if args[0] in ["ad-break", "vayl-load", "stream-online", "stream-offline"]:
-                    await addAlert({"type":args[0]}, "end")
-                if args[0].lower() in debug_commands:
-                    
-                    command = cmd.text.split("!debug " + args[0])[1]
-                    # Fetch the command structure
-                    command_structure = debug_commands[args[0].lower()]
-                    defaults = command_structure.get("defaults", {})
-                    potential_args = command_structure.get("potential", [])
-
-                    # Regex to match arguments
-                    pattern = r"(\w+):\"([^\"]+)\"|(\w+):(\S+)"
-                    matches = re.findall(pattern, command)
-
-                    # Start with default values
-                    parsed_args = defaults.copy()
-                    parsed_args["type"] = args[0].lower()
-
-                    # Overwrite defaults with provided arguments
-                    for match in matches:
-                        key = match[0] or match[2]  # Match prefix (e.g., "u", "tier", etc.)
-                        value = match[1] or match[3]  # Match quoted or non-quoted value
-
-                        # Map the prefix to its corresponding argument
-                        if key in argument_prefixes:
-                            arg_name = argument_prefixes[key]
-                            if arg_name in potential_args:
-                                parsed_args[arg_name] = value
-                    
-                    await addAlert(parsed_args, "end")
-                    
-            '''
             if len(args) == 1:
                 if args[0] in ["ad-break", "vayl-load", "stream-online", "stream-offline"]:
                     await addAlert({"type":args[0]}, "end")
@@ -530,9 +466,6 @@ async def c_debug (cmd: ChatCommand):
                 if "giftsub" == args[0] and args[1].isalnum() and args[2].isalnum() and args[3].isnumeric():
                     for i in range(0, int(args[3])):
                         await addAlert({"type":"giftsub", "gifter":args[1], "tier":args[2], "gifted":"ExampleUsername"}, "end")
-            '''
-    
-    
     except Exception as e:
         logError(tag = "command.debug")
 ## =================================================================================
@@ -1023,19 +956,6 @@ async def runActions (actions, variables):
         
             for tag, value in variables.items():
                 word = word.replace("[" + tag + "]", str(value))
-                
-            if "[nickname:" in word:
-                name = word.split("[nickname:")[1].split("]")[0]
-                with open(os.path.join(vdir["configuration"], "nicknames.yml"), 'r', encoding = "utf-8") as file:
-                    data = yaml.safe_load(file)
-                    found = False
-                    for n,v in data.items():
-                        if n.lower() == name.lower():
-                            word = word.replace("[nickname:" + name + "]", v)
-                            found = True
-                            break
-                    if not found:
-                        word = word.replace("[nickname:" + name + "]", name)
         
             if "[followers]" in word:
                 counter = 0
@@ -2029,9 +1949,7 @@ error_reference = { "chat.moderation" : "Applying ModerationCheck to chat messag
                     "event.on_sub" : "Attempting to handle Sub event.",
                     "event.on_bits" : "Attempting to handle Bit event.",
                     "event.on_redeem" : "Attempting to handle Redeem event.",
-                    "stream.viewers" : "Attempting to fetch stream's viewercount.",
-                    "debug.invalid" : "Attempting to debug an invalid event."
-                    
+                    "stream.viewers" : "Attempting to fetch stream's viewercount." 
                 }
 
 ## =================================================================================
