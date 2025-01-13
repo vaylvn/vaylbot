@@ -157,21 +157,27 @@ async def on_message (msg: ChatMessage):
         
         
         ## live check ==================================================================
-        if not sv["live"]:
+        if sv["live"] == False:
             async for streams in sv["twitch"].get_streams(user_id = sv["streamer"].id):
-                live = True
-        else:
+                sv["live"] = True
         
-            ## first session chat ==========================================================
-            if name not in sv["spoken"]:
-                sv["spoken"].append(name)
-                await addAlert({"type":"first-session-chat", "user":name, "message":msg.text},"0")
-            ## =============================================================================
-            
+        if sv["live"] == True:
+        
             ## first time chat =============================================================
             if "first-msg" in msg.__dict__["_parsed"]["tags"] and msg.__dict__["_parsed"]["tags"]["first-msg"] == "1":
                 await addAlert({"type":"first-time-chat", "user":name, "message":msg.text},"0")
+                sv["spoken"].append(name)
+            else:
+                if name not in sv["spoken"]:
+                    sv["spoken"].append(name)
+                    await addAlert({"type":"first-session-chat", "user":name, "message":msg.text},"0")
             ## =============================================================================
+            
+            ## first session chat ==========================================================
+            
+            ## =============================================================================
+            
+            
             
         ## =============================================================================
     except Exception as e:
@@ -985,7 +991,8 @@ async def runActions (actions, variables):
                             "vip"            : ["modifier", "username"],
                             "timeout"        : ["user", "duration", "reason"],
                             "webhook"        : ["name"],
-                            "createclip"     : []}
+                            "createclip"     : [],
+                            "addmarker"      : []}
                             
     
     action_expected = { "obs:scene"      : "'obs:scene ; <scene_name>'",
@@ -1011,7 +1018,8 @@ async def runActions (actions, variables):
                         "vip"            : "'vip ; <add/remove> ; <username>'",
                         "timeout"        : "'timeout ; <username> ; <duration> ; <reason>'",
                         "webhook"        : "'webhook ; <webhook_name>'",
-                        "createclip"     : "'createclip'"}
+                        "createclip"     : "'createclip'",
+                        "addmarker"      : "'addmarker'"}
 
 
     async def processTags (phrase, is_conditional):
@@ -1641,6 +1649,15 @@ async def runActions (actions, variables):
         ## =========================================================================
         
         
+        ## addmarker ===============================================================
+        if action == "addmarker":
+            try:
+                marker = await sv["twitch"].create_stream_marker(sv["streamer"].id, "")
+            except Exception as e:
+                logError(tag = "action.addmarker", additional_details = [a, "Expecting: " + action_expected[action]])
+        ## =========================================================================
+        
+        
 ## =================================================================================
 
 
@@ -1988,6 +2005,7 @@ error_reference = { "chat.moderation" : "Applying ModerationCheck to chat messag
                     "action.conditional" : "Attempting to run 'conditional' action.",
                     "action.tts" : "Attempting to run 'tts' action.",
                     "action.clip" : "Attempting to run 'createclip' action",
+                    "action.addmarker" : "Attempting to run 'addmarker' action",
                     "action.variables" : "Attempting to format actiion variables.",
                     "vayl.prompt" : "Attempting to print in Vayl console.",
                     "vayl.updatevariable" : "Attempting to update Vayl variable.",
