@@ -6,3 +6,4 @@
 vaylold.py
 *.spec
 *.bat
+/build
