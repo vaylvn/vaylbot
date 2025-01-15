@@ -1,4 +1,4 @@
-__version__ = "beta0021"
+__version__ = "beta0023"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -374,7 +374,7 @@ async def on_sub (d, data):
 
 
 ## OnWhisper =======================================================================
-async def on_whisper (d, data):
+async def on_whisper (data: UserWhisperMessageEvent):
     pass
 ## =================================================================================
 
@@ -1969,7 +1969,7 @@ async def run():
     prompt ("success", "Loading Authentication")
     
     sv["twitch"] = await Twitch(sv["id"], sv["secret"])
-    auth = UserAuthenticator(sv["twitch"], USER_SCOPE, force_verify = False)
+    auth = UserAuthenticator(sv["twitch"], USER_SCOPE, force_verify = True)
     token, refresh = await auth.authenticate()
     await sv["twitch"].set_user_authentication(token, USER_SCOPE, refresh)
     
@@ -1995,6 +1995,7 @@ async def run():
     await eventsub.listen_hype_train_begin(sv["streamer"].id, on_hype_train)   
     await eventsub.listen_channel_shoutout_create(sv["streamer"].id, sv["streamer"].id, on_shoutout_give)
     await eventsub.listen_channel_shoutout_receive(sv["streamer"].id, sv["streamer"].id, on_shoutout_receive)
+    await eventsub.listen_user_whisper_message(sv["streamer"].id, on_whisper))
     
     prompt ("success", "Registering PubSub")
     
@@ -2002,12 +2003,14 @@ async def run():
     pubsub.start()
     redeem_event = await pubsub.listen_channel_points(sv["streamer"].id, on_redeem)
     sub_event = await pubsub.listen_channel_subscriptions(sv["streamer"].id, on_sub)
-    whisper_event = await pubsub.listen_whispers(sv["streamer"].id, on_whisper)
+    # whisper_event = await pubsub.listen_whispers(sv["streamer"].id, on_whisper)
     bit_event = await pubsub.listen_bits(sv["streamer"].id, on_bits)
     
-    btwitch = await Twitch(sv["id"], sv["secret"])    
-    await btwitch.set_user_authentication("fi7d5m18fm1zmcgfabax16xssvvddc", USER_SCOPE, "qudyvazycvc2ef557n0m4prkg84zbpafgbxkq1u2uxh2fck7jm")
 
+    btwitch = await Twitch(sv["id"], sv["secret"])    
+    # await btwitch.set_user_authentication("fi7d5m18fm1zmcgfabax16xssvvddc", USER_SCOPE, "qudyvazycvc2ef557n0m4prkg84zbpafgbxkq1u2uxh2fck7jm")
+    await btwitch.set_user_authentication(token, USER_SCOPE, refresh)
+    
     prompt ("success", "Connecting to Chat")
     
     sv["chat"] = await Chat(btwitch)

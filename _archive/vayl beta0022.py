@@ -1,4 +1,4 @@
-__version__ = "beta0021"
+__version__ = "beta0022"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -25,14 +25,6 @@ import requests
 import requests
 import asyncio
 import random
-import yaml
-import time
-import json
-import uuid
-import pytz
-import sys
-import os
-import re
 
 from pyt2s.services import stream_elements
 from pyt2s.services import voice_forge
@@ -919,6 +911,7 @@ async def process_alert(alert):
         return buffer, pop_amount  # Return values safely
     except Exception as e:
         print(f"Error processing alert {alert.get('id', 'unknown')}: {e}")
+        logError (tag = "action.run")
         return 1, 1  # Fallback defaults
 
 
@@ -1205,15 +1198,19 @@ async def runActions (actions, variables):
                 if "[xstring:" in word:
                     word = re.sub(r"\[xstring:([^:]+):([+-]?\d+)\]", lambda m: m.group(1) * int(m.group(2)) if int(m.group(2)) >= 0 else "", word )
                 
+                
                 if "[ugame:" in word:
                     name = word.split("[ugame:")[1].split("]")[0]
-                    async for users in twitch.get_users(logins = [name]):
-                        infos = await twitch.get_channel_information(users.id)
-                        game = infos[0].game_name if infos[0].game_name != "" else "nothing"
-                        word = word.replace("[ugame:" + name + "]", game)
+                    found_game = ""
+                    async for users in sv["twitch"].get_users(logins = [name]):
+                        infos = await sv["twitch"].get_channel_information(users.id)
+                        found_game = infos[0].game_name if infos[0].game_name != "" else "something..."
+                    word = word.replace("[ugame:" + name + "]", found_game)
+            
+
             
             except:
-                pass
+                logError (tag = "action.tags")
                 
             phrase_split[i] = word
         
@@ -2073,6 +2070,8 @@ error_reference = { "chat.moderation" : "Applying ModerationCheck to chat messag
                     "obs.mediafile" : "Attempting to modify OBS media file.",
                     "obs.slideshow" : "Attempting to modify OBS slideshow.",
                     "obs.filter" : "Attempting to access OBS source filter.",
+                    "action.run" : "Attempting to run actions.",
+                    "action.tags" : "Attempting to format action tags.",
                     "action.wait" : "Attempting to run 'wait' action.",
                     "action.chat" : "Attempting to run 'chat' action.",
                     "action.editfile" : "Attempting to run 'editfile' action.",
