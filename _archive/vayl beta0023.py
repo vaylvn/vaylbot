@@ -2026,11 +2026,8 @@ async def run():
     prompt ("success", "Loading Authentication")
     
     sv["twitch"] = await Twitch(sv["id"], sv["secret"])
-    auth = UserAuthenticator(sv["twitch"], USER_SCOPE, force_verify = False)
+    auth = UserAuthenticator(sv["twitch"], USER_SCOPE, force_verify = True)
     token, refresh = await auth.authenticate()
-    
-    print (token)
-    print (refresh)
     await sv["twitch"].set_user_authentication(token, USER_SCOPE, refresh)
     
     await printLogo()
@@ -2074,7 +2071,7 @@ async def run():
 
     btwitch = await Twitch(sv["id"], sv["secret"])    
     # await btwitch.set_user_authentication("fi7d5m18fm1zmcgfabax16xssvvddc", USER_SCOPE, "qudyvazycvc2ef557n0m4prkg84zbpafgbxkq1u2uxh2fck7jm")
-    await btwitch.set_user_authentication("0iq7zso170ystonxazo4l2djh14r1z", USER_SCOPE, "b0yxlcle6le3z3ujfq6fi7kdgifz9229yq6dgscj36n4fd55r8")
+    await btwitch.set_user_authentication(token, USER_SCOPE, refresh)
     
     prompt ("success", "Connecting to Chat")
     
