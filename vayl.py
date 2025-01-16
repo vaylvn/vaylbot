@@ -6,7 +6,7 @@ from twitchAPI.oauth import UserAuthenticator
 from twitchAPI.type import AuthScope, ChatEvent
 from twitchAPI.chat import Chat, EventData, ChatMessage, ChatSub, ChatCommand
 from discord_webhook import DiscordWebhook, DiscordEmbed
-from twitchAPI.object.eventsub import ChannelFollowEvent, StreamOnlineEvent, StreamOfflineEvent, ChannelPollBeginEvent, ChannelPollEndEvent, ChannelPredictionEvent, ChannelPredictionEndEvent, HypeTrainEvent, ChannelShoutoutCreateEvent, ChannelShoutoutReceiveEvent, ChannelAdBreakBeginEvent
+from twitchAPI.object.eventsub import ChannelFollowEvent, StreamOnlineEvent, StreamOfflineEvent, ChannelPollBeginEvent, ChannelPollEndEvent, ChannelPredictionEvent, ChannelPredictionEndEvent, HypeTrainEvent, ChannelShoutoutCreateEvent, ChannelShoutoutReceiveEvent, ChannelAdBreakBeginEvent, ChannelSubscribeEvent, ChannelSubscriptionGiftEvent, ChannelSubscriptionMessageEvent, ChannelCheerEvent, ChannelPointsCustomRewardRedemptionAddEvent
 from twitchAPI.eventsub.websocket import EventSubWebsocket
 from datetime import datetime, timedelta, date
 from twitchAPI.pubsub import PubSub
@@ -170,7 +170,7 @@ async def on_message (msg: ChatMessage):
             else:
                 if name not in sv["spoken"]:
                     sv["spoken"].append(name)
-                    await addAlert({"type":"first-session-chat", "user":name, "message":msg.text},"0")
+                    await addAlert({"type":"first-session-chat", "user":msg.user.display_name, "message":msg.text},"0")
             ## =============================================================================
             
             ## first session chat ==========================================================
@@ -350,6 +350,36 @@ async def on_follow (data: ChannelFollowEvent):
 
 
 ## OnSub ===========================================================================
+async def on_sub_new (data: ChannelSubscribeEvent):
+    try:
+        alert = event.data.to_dict(include_none_values = False)
+        alert["type"] = "sub"
+        alert["tier"] = {"1000":"1", "2000":"2", "3000":"3"}[data.event.tier]
+        await addAlert(alert, "end")
+    except Exception as e:
+        logError(tag = "event.on_sub")
+
+
+async def on_giftsub (data: ChannelSubscriptionGiftEvent):
+    try:
+        alert = event.data.to_dict(include_none_values = False)
+        alert["type"] = "giftsub"
+        await addAlert(alert, "end")
+    except:
+        logError(tag = "event.on_giftsub")
+        
+async def on_resub (data: ChannelSubscriptionMessageEvent):
+    try:
+        alert = event.data.to_dict(include_none_values = False)
+        alert["type"] = "resub"
+        alert["message"] = event.data.to_dict(include_none_values = False)["message"]["text"]
+        alert["tier"] = {"1000":"1", "2000":"2", "3000":"3"}[data.event.tier]
+    except:
+        logError(tag = "event.on_resub")
+
+
+
+
 async def on_sub (d, data):
     try:
         alert = {}
@@ -370,12 +400,13 @@ async def on_sub (d, data):
         await addAlert(alert, "end")
     except Exception as e:
         logError(tag = "event.on_sub")
+
 ## =================================================================================
 
 
 ## OnWhisper =======================================================================
-async def on_whisper (data: UserWhisperMessageEvent):
-    pass
+# async def on_whisper (data: UserWhisperMessageEvent):
+#     pass
 ## =================================================================================
 
 
@@ -389,6 +420,14 @@ async def on_bits (d, data):
             if "Cheer" in word and len(word) > 5:
                 message = message.replace(word,"")
         await addAlert({"type":"bits", "user":data["data"]["user_name"], "amount":data["data"]["bits_used"], "message":message}, "end")
+    except Exception as e:
+        logError(tag = "event.on_bits")
+        
+        
+async def on_bits_new (data: ChannelCheerEvent):
+    try:
+        alert = event.data.to_dict(include_none_values = False)
+        alert["type"] = "bits"
     except Exception as e:
         logError(tag = "event.on_bits")
 ## =================================================================================
@@ -413,6 +452,24 @@ async def on_redeem (d, data):
         await updateVariable("latest-redeem-user", redeem["user"]["display_name"])
         await updateVariable("latest-redeem-name", redeem["reward"]["title"])
     except Exception as e:
+        logError(tag = "event.on_redeem")
+        
+async def on_redeem_new (data: ChannelPointsCustomRewardRedemptionAddEvent):
+    try:
+        alert = event.data.to_dict(include_none_values = False)
+        alert["type"] = "redeem"
+        alert["redeem"] = alert["redeem"]["title"]
+        alert["cost"] = str(alert["redeem"]["cost"])
+        alert["description"] = alert["redeem"]["prompt"]
+        
+        with open(os.path.join(vdir["configuration"], "redeems.yml"), 'r', encoding = "utf-8") as file:
+            redeem_data = yaml.safe_load(file)
+            if alert["redeem"] in redeem_data["redeem"]:
+                alert["buffer"] = redeem_data["redeem"][alert["redeem"]]["buffer"]
+                alert["actions"] = redeem_data["redeem"][alert["redeem"]]["actions"]
+                await addAlert(alert, "0" if redeem_data["redeem"][alert["redeem"]]["queue"] else "end")
+    
+    except:
         logError(tag = "event.on_redeem")
 ## =================================================================================
 
@@ -1995,7 +2052,12 @@ async def run():
     await eventsub.listen_hype_train_begin(sv["streamer"].id, on_hype_train)   
     await eventsub.listen_channel_shoutout_create(sv["streamer"].id, sv["streamer"].id, on_shoutout_give)
     await eventsub.listen_channel_shoutout_receive(sv["streamer"].id, sv["streamer"].id, on_shoutout_receive)
-    await eventsub.listen_user_whisper_message(sv["streamer"].id, on_whisper))
+    # await eventsub.listen_user_whisper_message(sv["streamer"].id, on_whisper)
+    # await eventsub.listen_channel_cheer(sv["streamer"].id, on_bits)
+    await eventsub.listen_channel_subscribe(sv["streamer"].id, on_sub)
+    # await eventsub.listen_channel_subscription_gift(sv["streamer"].id, on_giftsub)
+    # await eventsub.listen_channel_subscription_message(sv["streamer"].id, on_resub)
+    # await eventsub.listen_channel_points_custom_reward_redemption_add(sv["streamer"].id, on_redeem)
     
     prompt ("success", "Registering PubSub")
     
