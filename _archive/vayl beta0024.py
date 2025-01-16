@@ -1,4 +1,4 @@
-__version__ = "beta0024"
+__version__ = "beta0025"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -877,8 +877,7 @@ def indexOBS():
 ## Index OBS =======================================================================
 async def indexOBSAsync():
     global sv
-    new_index = {}
-    
+    sv["obs"] = {}
     while True:
         scenes = []
         groups = []
@@ -891,13 +890,10 @@ async def indexOBSAsync():
                     scenes.append(scene["sceneName"])
                 for group in cl.get_group_list().__dict__["groups"]:
                     groups.append(group)
-            new_index["scenes"] = scenes
-            new_index["groups"] = groups
+            sv["obs"]["scenes"] = scenes
+            sv["obs"]["groups"] = groups
         except:
             pass
-            
-        sv["obs"] = new_index
-            
         await asyncio.sleep(60)
 ## =================================================================================
 
