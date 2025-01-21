@@ -191,7 +191,7 @@ async def on_raid (raid: dict):
     try:
         await updateVariable("latest-raid-raider", raid["tags"]["display-name"])
         await updateVariable("latest-raid-amount", raid["tags"]["msg-param-viewerCount"])
-        await addAlert({"type":"raid","user":raid["tags"]["display-name"],"viewercount":raid["tags"]["msg-param-viewerCount"]}, "0")
+        await addAlert({"type":"raid","user":raid["tags"]["display-name"],"viewers":raid["tags"]["msg-param-viewerCount"]}, "0")
     except Exception as e:
         logError(tag = "event.on_raid")
 ## =================================================================================
@@ -562,41 +562,6 @@ async def c_debug (cmd: ChatCommand):
                                 parsed_args[arg_name] = value
                     
                     await addAlert(parsed_args, "end")
-                    
-            '''
-            if len(args) == 1:
-                if args[0] in ["ad-break", "vayl-load", "stream-online", "stream-offline"]:
-                    await addAlert({"type":args[0]}, "end")
-            if len(args) == 2:
-                if "hypetrain" in args[0] and args[1].isnumeric():
-                    await addAlert({"type":"hypetrain","level":int(args[1])}, "end")
-                if "first-time-chat" in args[0] and args[1].isalnum():
-                    await addAlert({"type":"first-time-chat", "user":args[1]}, "end")
-                if "first-session-chat" in args[0] and args[1].isalnum():
-                    await addAlert({"type":"first-session-chat", "user":args[1]}, "end")
-                if "follow" in args[0] and args[1].isalnum():
-                    await addAlert({"type":"follow", "user":args[1]}, "end")
-            if len(args) >= 2:
-                if "raid" == args[0] and args[1].isalnum():
-                    viewers = int(args[2]) if len(args) > 2 and args[2].isnumeric() else 1
-                    await addAlert({"type":"raid", "user":args[1], "viewercount":viewers}, "end")
-                if "shoutout-give" == args[0] and len(args) == 3 and args[1].isalnum() and args[2].isnumeric():
-                    await addAlert({"type":"shoutout-created", "user":args[1], "viewercount":int(args[2])}, "end")
-                if "shoutout-receive" == args[0] and len(args) == 3 and args[1].isalnum() and args[2].isnumeric():
-                    await addAlert({"type":"shoutout-receive", "user":args[1], "viewercount":int(args[2])},"end")
-            if len(args) >= 3:
-                if "bits" in args[0] and args[1].isalnum() and args[2].isnumeric():
-                    await addAlert({"type":"bits","user":args[1],"amount":int(args[2]),"message":"" if len(args) <= 3 else " ".join(args[3:])}, "end")
-                elif "sub" == args[0] and args[1].isalnum() and args[2].isnumeric():
-                    
-                    tier = args[2].lower if args[2].lower() in ["1","2","3","prime"] else "1"
-                    await addAlert({"type":"sub","tier":tier,"user":args[1],"total-months":args[2],"sub-message": "" if len(args) <= 3 else " ".join(args[3:]) }, "end")
-            if len(args) == 4:
-                if "giftsub" == args[0] and args[1].isalnum() and args[2].isalnum() and args[3].isnumeric():
-                    for i in range(0, int(args[3])):
-                        await addAlert({"type":"giftsub", "gifter":args[1], "tier":args[2], "gifted":"ExampleUsername"}, "end")
-            '''
-    
     
     except Exception as e:
         logError(tag = "command.debug")
@@ -1456,6 +1421,11 @@ async def runActions (actions, variables):
         ## text ====================================================================
         if action == "text":
             try:
+            
+                if not os.path.exists(os.getcwd() + "\\data\\variables\\text\\" + adata["name"] + ".txt"):
+                    with open(os.getcwd() + "\\data\\variables\\text\\" + adata["name"] + ".txt", 'w', encoding = "utf-8") as file:
+                        pass
+            
                 text = ""
                 try:
                     with open(os.getcwd() + "\\data\\variables\\text\\" + adata["name"] + ".txt", 'r', encoding = "utf-8") as f:
@@ -1472,6 +1442,11 @@ async def runActions (actions, variables):
         ## boolean =================================================================
         if action == "boolean":
             try:
+            
+                if not os.path.exists(os.getcwd() + "\\data\\variables\\boolean\\" + adata["name"] + ".txt"):
+                    with open(os.getcwd() + "\\data\\variables\\boolean\\" + adata["name"] + ".txt", 'w', encoding = "utf-8") as file:
+                        file.write("false")
+            
                 value = False
                 try:
                     with open(os.getcwd() + "\\data\\variables\\boolean\\" + adata["name"] + ".txt", 'r', encoding = "utf-8") as f:
@@ -1489,6 +1464,11 @@ async def runActions (actions, variables):
         ## counter =================================================================
         if action == "counter":
             try:
+            
+                if not os.path.exists(os.getcwd() + "\\data\\variables\\counter\\" + adata["name"] + ".txt"):
+                    with open(os.getcwd() + "\\data\\variables\\counter\\" + adata["name"] + ".txt", 'w', encoding = "utf-8") as file:
+                        file.write("0")
+            
                 counter = 0
                 try:
                     with open(os.getcwd() + "\\data\\variables\\counter\\" + adata["name"] + ".txt", 'r', encoding = "utf-8") as file:
@@ -1509,6 +1489,11 @@ async def runActions (actions, variables):
         ## list ====================================================================
         if action == "list":
             try:
+            
+                if not os.path.exists(os.getcwd() + "\\data\\variables\\list\\" + adata["name"] + ".txt"):
+                    with open(os.getcwd() + "\\data\\variables\\list\\" + adata["name"] + ".txt", 'w', encoding = "utf-8") as file:
+                        pass
+            
                 list = []
                 with open(os.getcwd() + "\\data\\variables\\list\\" + adata["name"] + ".txt", 'r', encoding = "utf-8") as file:
                     list = file.read().splitlines()
@@ -1759,7 +1744,7 @@ async def runActions (actions, variables):
                                     
                                 if data is not None:
                                 
-                                    file_path = os.path.join(vdir["resources"], "tts.wav")
+                                    file_path = os.path.join(os.getcwd(), "data", "tts", str(uuid.uuid4()) + ".wav")
                                     with open(file_path, "+wb") as file:
                                         file.write(data)
                                     
@@ -1775,7 +1760,19 @@ async def runActions (actions, variables):
                                         raise TimeoutError("File write did not stabilize in time")
                                             
                                     await asyncio.sleep(1)
-                                    playsound(file_path, block = (adata["halt"] == "true"))
+                                    
+                                    def play_tts(file_path):
+                                        try:
+                                            playsound(file_path, block = True)
+                                        finally:
+                                            print(f"Cleaning up {file_path}")
+                                            if os.path.exists(file_path):
+                                                os.remove(file_path)
+                                                print(f"Deleted {file_path}")
+
+                                    # Non-daemon thread
+                                    thread = threading.Thread(target=play_tts, args=(file_path,))
+                                    thread.start()
                                 
                                 break
                     
@@ -2033,8 +2030,6 @@ async def run():
     auth = UserAuthenticator(sv["twitch"], USER_SCOPE, force_verify = False)
     token, refresh = await auth.authenticate()
     
-    print (token)
-    print (refresh)
     await sv["twitch"].set_user_authentication(token, USER_SCOPE, refresh)
     
     await printLogo()
