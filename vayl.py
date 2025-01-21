@@ -1,4 +1,4 @@
-__version__ = "beta0024"
+__version__ = "beta0025"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -915,7 +915,7 @@ async def process_alert(alert):
         if "giftsub" in alert["type"]:
             alert["amount"] = 1
             for a in sv["alerts"][1:]:
-                if a["type"] == "giftsub" and a["gifter"] == alert["gifter"]:
+                if a["type"] == "giftsub" and a["user"] == alert["user"]:
                     alert["amount"] += 1
                     pop_amount += 1
 
