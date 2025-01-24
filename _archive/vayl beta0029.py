@@ -312,7 +312,7 @@ async def on_prediction_end (data: ChannelPredictionEndEvent):
 ## OnHypeTrain =====================================================================
 async def on_hype_train (data: HypeTrainEvent):
     try:
-        await addAlert({"type":"hypetrain", "level":data.event.level}, "0")
+        await addAlert({"type":"hypetrain", "level":data.event.level, "conductor:bits":data.event.top_contributions[0].user_name, "conductor:subs":data.event.top_contributions[1].user_name}, "0")
     except Exception as e:
         logError(tag = "event.on_hype_train")
 ## =================================================================================
