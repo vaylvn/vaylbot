@@ -1672,18 +1672,10 @@ async def runActions (actions, variables):
                                     else:
                                         raise TimeoutError("File write did not stabilize in time")
                                             
+                                    await asyncio.sleep(2)
+                                    
                                     def play_tts(file_path):
                                         try:
-                                        
-                                            timeout = 5
-                                            start_time = time.time()
-                                            while time.time() - start_time < timeout:
-                                                if os.path.exists(file_path):
-                                                    break
-                                                time.sleep(0.1)
-                                            else:
-                                                raise FileNotFoundError(f"File {file_path} did not appear in time.")
-                                        
                                             playsound(file_path, block = True)
                                         finally:
                                             print(f"Cleaning up {file_path}")
