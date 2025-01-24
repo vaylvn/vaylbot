@@ -1,4 +1,4 @@
-__version__ = "beta0031"
+__version__ = "beta0030"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -1686,8 +1686,10 @@ async def runActions (actions, variables):
                                         
                                             playsound(file_path, block = True)
                                         finally:
+                                            print(f"Cleaning up {file_path}")
                                             if os.path.exists(file_path):
                                                 os.remove(file_path)
+                                                print(f"Deleted {file_path}")
 
                                     # Non-daemon thread
                                     thread = threading.Thread(target=play_tts, args=(file_path,))
