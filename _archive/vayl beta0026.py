@@ -1,4 +1,4 @@
-__version__ = "beta0028"
+__version__ = "beta0026"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -15,7 +15,6 @@ from twitchAPI.helper import first
 from playsound3 import playsound
 from colorama import Fore, Back, Style, init
 from num2words import num2words
-from collections import deque
 
 from textwrap import wrap
 import tldextract
@@ -74,7 +73,7 @@ for path in ["conditionals","event","webhook"]:
 ## Bot Variables ===================================================================
 sv = { "id" : "xfc4596ekgo4ewkag6wn01hgs4hfbl", "secret" : "p8wl2zzuk3sgjmbdrlxe9l65xno8wk",
        "version" : "", "twitch" : None, "streamer" : None, "channel" : None, "chat" : None, "live" : False,
-       "alerts" : deque(), "actions" : [], "commands" : {}, "sfx" : {}, "phrases" : {}, "spoken" : [] }
+       "alerts" : [], "actions" : [], "commands" : {}, "sfx" : {}, "phrases" : {}, "spoken" : [] }
 ## =================================================================================
 
 
@@ -902,45 +901,133 @@ def manageAlerts():
     
     
 ## Manage Alerts (async) ===========================================================
+processed_alerts = []
+
+async def process_alert(alert):
+    try:
+    
+        print(f"Processing alert: {alert['id'], (alert['type'])}")
+        actions = []
+        buffer = 1  # Default buffer
+        pop_amount = 1
+
+        # Example logic for handling alerts
+        if "giftsub" in alert["type"]:
+            alert["amount"] = 1
+            for a in sv["alerts"][1:]:
+                if a["type"] == "giftsub" and a["user"] == alert["user"]:
+                    alert["amount"] += 1
+                    pop_amount += 1
+
+        # Handle other alert types
+        if "redeem" in alert["type"]:
+            actions = alert.get("actions", [])
+            buffer = alert.get("buffer", 1)
+        else:
+            try:
+                with open(os.path.join(vdir["event"], f"{alert['type']}.yml"), 'r', encoding="utf-8") as file:
+                    data = yaml.safe_load(file)
+                    if data.get("enabled", False):
+                        actions = data["actions"]
+                        buffer = data.get("buffer", 1)
+            except FileNotFoundError:
+                print(f"YAML file not found for alert type: {alert['type']}")
+            except Exception as e:
+                print(f"Error loading YAML for alert {alert['type']}: {e}")
+
+        # Run actions
+        if actions:
+            try:
+                await runActions(actions, alert)
+            except Exception as e:
+                print(f"Error running actions for alert {alert['id']}: {e}")
+
+        return buffer, pop_amount  # Return values safely
+    except Exception as e:
+        print(f"Error processing alert {alert.get('id', 'unknown')}: {e}")
+        logError (tag = "action.run")
+        return 1, 1  # Fallback defaults
 
 
 
 async def manageAlertsAsync():
-    global sv
-    
+    global sv, processed_alerts
+
     while True:
-        buffer = 1
-        
-        if sv["alerts"] and len(sv["alerts"]) > 0:
-            alert = sv["alerts"].popleft()
+        buffer = 1  # Default fallback buffer
 
-            if "giftsub" in alert["type"]:
-                alert["amount"] = 1
-                while sv["alerts"] and sv["alerts"][0]["type"] == "giftsub" and sv["alerts"][0]["user"] == alert["user"]:
-                    sv["alerts"].popleft()  # Remove the matching element
-                    alert["amount"] += 1
-            if "redeem" in alert["type"]:
-                actions = alert.get("actions", [])
-                buffer = alert.get("buffer", 1)
-            else:
+        if sv["alerts"]:
+            alert = sv["alerts"][0]
+            if alert["id"] not in processed_alerts:
                 try:
-                    with open(os.path.join(os.getcwd(), "configuration", "event", alert['type'] + ".yml"), 'r', encoding="utf-8") as file:
-                        data = yaml.safe_load(file)
-                        if data.get("enabled", False):
-                            actions = data["actions"]
-                            buffer = data.get("buffer", 1)
-                except FileNotFoundError:
-                    print(f"YAML file not found for alert type: {alert['type']}")
+                    buffer, pop_amount = await process_alert(alert)
+                    for _ in range(pop_amount):
+                        sv["alerts"].pop(0)
+                    processed_alerts.append(alert["id"])
                 except Exception as e:
-                    print(f"Error loading YAML for alert {alert['type']}: {e}")
-            
-            print("Processing alert: " + alert['type'])
-            await runActions(actions, alert)
+                    print(f"Error processing alert {alert.get('id', 'unknown')}: {e}")
+            else:
+                sv["alerts"].pop(0)
+
+        # Sleep with a valid buffer
         await asyncio.sleep(buffer)
-        
-            
 
 
+
+'''
+async def manageAlertsAsync():
+    global sv
+    global processed_alerts
+
+    while True:
+        buffer = 1  # Default buffer
+        pop_amount = 1
+
+        if len(sv["alerts"]) > 0:
+            try:
+                alert = sv["alerts"][0]
+                if alert["id"] not in processed_alerts:
+                    actions = []
+
+                    if "giftsub" in alert["type"]:
+                        alert["amount"] = 1
+                        for a in sv["alerts"][1:]:
+                            if a["type"] == "giftsub" and a["gifter"] == alert["gifter"]:
+                                alert["amount"] += 1
+                                pop_amount += 1
+
+                    if "redeem" in alert["type"]:
+                        actions = alert["actions"]
+                        buffer = alert.get("buffer", 1)
+                    else:
+                        try:
+                            with open(os.path.join(vdir["event"], alert["type"] + ".yml"), 'r', encoding="utf-8") as file:
+                                data = yaml.safe_load(file)
+                                if data.get("enabled", False):
+                                    actions = data["actions"]
+                                    buffer = data.get("buffer", 1)
+                        except FileNotFoundError:
+                            print(f"YAML file not found for alert type: {alert['type']}")
+                        except Exception as e:
+                            print(f"Error loading alert configuration: {e}")
+
+                    try:
+                        await runActions(actions, alert)
+                    except Exception as e:
+                        print(f"Error running actions for alert {alert['id']}: {e}")
+
+                    for _ in range(pop_amount):
+                        sv["alerts"].pop(0)
+
+                    processed_alerts.append(alert["id"])
+                else:
+                    sv["alerts"].pop(0)
+
+            except Exception as e:
+                print(f"Error processing alert queue: {e}")
+
+        await asyncio.sleep(buffer)
+'''
 ## =================================================================================
 
 
@@ -1037,7 +1124,7 @@ async def runActions (actions, variables):
                         "cmd"            : "'cmd ; <command>'",
                         "announce"       : "'announce ; <message> ; '<blue/green/orange/purple/primary>",
                         "vip"            : "'vip ; <add/remove> ; <username>'",
-                        "timeout"        : "'timeout ; <user> ; <duration> ; <reason>'",
+                        "timeout"        : "'timeout ; <username> ; <duration> ; <reason>'",
                         "webhook"        : "'webhook ; <webhook_name>'",
                         "createclip"     : "'createclip'",
                         "addmarker"      : "'addmarker'"}
@@ -1473,7 +1560,7 @@ async def runActions (actions, variables):
         ## timeout =================================================================
         if action == "timeout":
             try:
-                async for u in sv["twitch"].get_users(logins = [adata["user"]]):
+                async for u in sv["twitch"].get_users(logins = [adata["username"]]):
                     await sv["twitch"].ban_user(sv["streamer"].id, sv["streamer"].id, u.id, adata["reason"], int(adata["duration"]))
             except Exception as e:
                 logError(tag = "action.timeout", additional_details = [a, "Expecting: " + action_expected[action]])
@@ -1672,7 +1759,7 @@ async def runActions (actions, variables):
                                     else:
                                         raise TimeoutError("File write did not stabilize in time")
                                             
-                                    await asyncio.sleep(2)
+                                    await asyncio.sleep(1)
                                     
                                     def play_tts(file_path):
                                         try:

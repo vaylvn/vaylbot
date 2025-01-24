@@ -1,4 +1,4 @@
-__version__ = "beta0028"
+__version__ = "beta0027"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -1037,7 +1037,7 @@ async def runActions (actions, variables):
                         "cmd"            : "'cmd ; <command>'",
                         "announce"       : "'announce ; <message> ; '<blue/green/orange/purple/primary>",
                         "vip"            : "'vip ; <add/remove> ; <username>'",
-                        "timeout"        : "'timeout ; <user> ; <duration> ; <reason>'",
+                        "timeout"        : "'timeout ; <username> ; <duration> ; <reason>'",
                         "webhook"        : "'webhook ; <webhook_name>'",
                         "createclip"     : "'createclip'",
                         "addmarker"      : "'addmarker'"}
@@ -1473,7 +1473,7 @@ async def runActions (actions, variables):
         ## timeout =================================================================
         if action == "timeout":
             try:
-                async for u in sv["twitch"].get_users(logins = [adata["user"]]):
+                async for u in sv["twitch"].get_users(logins = [adata["username"]]):
                     await sv["twitch"].ban_user(sv["streamer"].id, sv["streamer"].id, u.id, adata["reason"], int(adata["duration"]))
             except Exception as e:
                 logError(tag = "action.timeout", additional_details = [a, "Expecting: " + action_expected[action]])
@@ -1672,7 +1672,7 @@ async def runActions (actions, variables):
                                     else:
                                         raise TimeoutError("File write did not stabilize in time")
                                             
-                                    await asyncio.sleep(2)
+                                    await asyncio.sleep(1)
                                     
                                     def play_tts(file_path):
                                         try:
