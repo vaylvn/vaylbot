@@ -1,4 +1,4 @@
-__version__ = "beta0033"
+__version__ = "beta0032"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -1149,34 +1149,6 @@ async def runActions (actions, variables):
                             count = 0
                         word = re.sub(r"\[clist:[^:\]]+:[^:\]]+\]", str(count), word)
                     except AttributeError:
-                        pass
-                
-                if "[toplist:" in word:
-                    try:
-                        # Extract name and text from the tag
-                        name, text = re.search(r"\[toplist:([^:\]]+):([^:\]]+)\]", word).groups()
-                        file_path = os.path.join(vdir["list"], name + ".txt")
-
-                        # Read the list and count occurrences
-                        try:
-                            with open(file_path, 'r', encoding="utf-8") as f:
-                                entries = f.read().splitlines()
-
-                            # Count occurrences and create a leaderboard
-                            from collections import Counter
-                            counts = Counter(entries)
-                            leaderboard = sorted(counts.items(), key=lambda x: (-x[1], x[0]))  # Sort by count, then alphabetically
-
-                            # Find the position of the specified text in the leaderboard
-                            position = next((i + 1 for i, (entry, _) in enumerate(leaderboard) if entry == text), 0)
-
-                        except FileNotFoundError:
-                            position = 0
-
-                        # Replace the tag with the position
-                        word = re.sub(r"\[toplist:[^:\]]+:[^:\]]+\]", str(position), word)
-                    except AttributeError:
-                        # Handle malformed tags gracefully
                         pass
                         
                 if "[rnumber:" in word:
