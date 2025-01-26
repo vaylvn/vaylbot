@@ -579,12 +579,11 @@ async def c_custom (cmd: ChatCommand):
         if cmd.name.lower() in sv["commands"]:
 
             
-            if user not in sv["commands"][cmd.name.lower()]["user-cooldown"]:
-                sv["commands"][cmd.name.lower()]["user-cooldown"][user] = 0
+            if user not in sv["commands"][cmd.name]["user-cooldown"]:
+                sv["commands"][cmd.name]["user-cooldown"][user] = 0
                 
             with open(os.path.join(vdir["configuration"], "commands.yml"), 'r', encoding = "utf-8") as file:
                 data = yaml.full_load(file)
-                data = data["command"][cmd.name.lower()]
                 
                 if not await isStreamer(user):
                     if "streamer-only" in data and data["streamer-only"] == True:
@@ -596,12 +595,12 @@ async def c_custom (cmd: ChatCommand):
                     if "vip-only" in data and data["vip-only"] == True and not "vip" in cmd.user.badges:
                         return
                         
-            if await isStreamer(user) or (time.time() - sv["commands"][cmd.name.lower()]["user-cooldown"][user] >= data["command"][cmd.name.lower()]["cooldown"]):
+            if await isStreamer(user) or (time.time() - sv["commands"][cmd.name]["user-cooldown"][user] >= data["command"][cmd.name]["cooldown"]):
                 command = {"user":user, "cmdtext":" ".join(arguments)}
                 for i in range (0, 9999):
                     command["arg" + str(i)] = "" if i >= len(arguments) else (arguments[i].replace("@","",1))
-                await runActions(data["command"][cmd.name.lower()]["actions"], command)
-                sv["commands"][cmd.name.lower()]["user-cooldown"][user] = time.time()
+                await runActions(data["command"][cmd.name]["actions"], command)
+                sv["commands"][cmd.name]["user-cooldown"][user] = time.time()
     except Exception as e:
         logError(tag = "command.custom")
 ## =================================================================================
@@ -1137,19 +1136,6 @@ async def runActions (actions, variables):
                     tag = word.split("[rlist:")[1].split("]")[0]
                     with open(os.path.join(vdir["list"], tag + ".txt"), 'r', encoding = "utf-8") as f:
                         word = word.replace("[rlist:" + tag + "]", random.choice(f.read().splitlines()))
-                        
-                if "[clist:" in word:
-                    try:
-                        name, text = re.search(r"\[clist:([^:\]]+):([^:\]]+)\]", word).groups()
-                        try:
-                            with open(os.path.join(vdir["list"], name + ".txt"), 'r', encoding="utf-8") as f:
-                                entries = f.read().splitlines()
-                            count = sum(1 for entry in entries if entry == text)
-                        except FileNotFoundError:
-                            count = 0
-                        word = re.sub(r"\[clist:[^:\]]+:[^:\]]+\]", str(count), word)
-                    except AttributeError:
-                        pass
                         
                 if "[rnumber:" in word:
                     min = word.split("[rnumber:")[1].split("-")[0]
