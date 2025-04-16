@@ -1,4 +1,4 @@
-__version__ = "beta0035"
+__version__ = "beta0033"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -349,36 +349,7 @@ async def on_follow (data: ChannelFollowEvent):
         logError(tag = "event.on_follow")
 ## =================================================================================
 
-async def on_sub (data: ChannelSubscribeEvent):
-    try:
-        event = data.event.to_dict()
-        event["type"] = "sub"
-        event["tier"] = {"Prime":"prime","1000":"1","2000":"2","3000":"3"}[event["tier"]]
-        await addAlert(event, "end")
-    except Exception as e:
-        pass
 
-async def on_giftsub (data: ChannelSubscriptionGiftEvent):
-    try:
-        event = data.event.to_dict(include_none_values=True)
-        event["type"] = "giftsub"
-        event["tier"] = {"Prime":"prime","1000":"1","2000":"2","3000":"3"}[event["tier"]]
-        await addAlert(event, "end")
-    except Exception as e:
-        pass
-
-async def on_resub (data: ChannelSubscriptionMessageEvent):
-    try:
-        event = data.event.to_dict(include_none_values=True)
-        event["type"] = "resub"
-        event["tier"] = {"Prime":"prime","1000":"1","2000":"2","3000":"3"}[event["tier"]]
-        await addAlert(event, "end")
-    except Exception as e:
-        pass
-
-
-
-'''
 ## OnSub ===========================================================================
 async def on_sub_new (data: ChannelSubscribeEvent):
     try:
@@ -430,7 +401,6 @@ async def on_sub (d, data):
         await addAlert(alert, "end")
     except Exception as e:
         logError(tag = "event.on_sub")
-'''
 
 ## =================================================================================
 
@@ -626,11 +596,11 @@ async def c_custom (cmd: ChatCommand):
                     if "vip-only" in data and data["vip-only"] == True and not "vip" in cmd.user.badges:
                         return
                         
-            if await isStreamer(user) or (time.time() - sv["commands"][cmd.name.lower()]["user-cooldown"][user] >= data["cooldown"]):
+            if await isStreamer(user) or (time.time() - sv["commands"][cmd.name.lower()]["user-cooldown"][user] >= data["command"][cmd.name.lower()]["cooldown"]):
                 command = {"user":user, "cmdtext":" ".join(arguments)}
                 for i in range (0, 9999):
                     command["arg" + str(i)] = "" if i >= len(arguments) else (arguments[i].replace("@","",1))
-                await runActions(data["actions"], command)
+                await runActions(data["command"][cmd.name.lower()]["actions"], command)
                 sv["commands"][cmd.name.lower()]["user-cooldown"][user] = time.time()
     except Exception as e:
         logError(tag = "command.custom")
@@ -965,8 +935,7 @@ async def manageAlertsAsync():
                 except Exception as e:
                     print(f"Error loading YAML for alert {alert['type']}: {e}")
             
-            if alert["type"] != "chat":
-                print("Processing alert: " + alert['type'])
+            print("Processing alert: " + alert['type'])
             await runActions(actions, alert)
         await asyncio.sleep(buffer)
         
@@ -2036,36 +2005,31 @@ async def run():
     eventsub.start()
     await eventsub.listen_channel_follow_v2(sv["streamer"].id, sv["streamer"].id, on_follow)
     await eventsub.listen_stream_online(sv["streamer"].id, on_live)
-    # await eventsub.listen_stream_offline(sv["streamer"].id, on_offline)
+    await eventsub.listen_stream_offline(sv["streamer"].id, on_offline)
     await eventsub.listen_channel_ad_break_begin(sv["streamer"].id, on_ad)
     await eventsub.listen_channel_poll_begin(sv["streamer"].id, on_poll_start)
-    # await eventsub.listen_channel_poll_end(sv["streamer"].id, on_poll_end)
-    # await eventsub.listen_channel_prediction_begin(sv["streamer"].id, on_prediction_start)    
-    # await eventsub.listen_channel_prediction_lock(sv["streamer"].id, on_prediction_lock)   
-    # await eventsub.listen_channel_prediction_end(sv["streamer"].id, on_prediction_end)   
+    await eventsub.listen_channel_poll_end(sv["streamer"].id, on_poll_end)
+    await eventsub.listen_channel_prediction_begin(sv["streamer"].id, on_prediction_start)    
+    await eventsub.listen_channel_prediction_lock(sv["streamer"].id, on_prediction_lock)   
+    await eventsub.listen_channel_prediction_end(sv["streamer"].id, on_prediction_end)   
     await eventsub.listen_hype_train_begin(sv["streamer"].id, on_hype_train)   
-    # await eventsub.listen_channel_shoutout_create(sv["streamer"].id, sv["streamer"].id, on_shoutout_give)
-    # await eventsub.listen_channel_shoutout_receive(sv["streamer"].id, sv["streamer"].id, on_shoutout_receive)
+    await eventsub.listen_channel_shoutout_create(sv["streamer"].id, sv["streamer"].id, on_shoutout_give)
+    await eventsub.listen_channel_shoutout_receive(sv["streamer"].id, sv["streamer"].id, on_shoutout_receive)
     # await eventsub.listen_user_whisper_message(sv["streamer"].id, on_whisper)
     # await eventsub.listen_channel_cheer(sv["streamer"].id, on_bits)
-    # await eventsub.listen_channel_subscribe(sv["streamer"].id, on_sub)
+    await eventsub.listen_channel_subscribe(sv["streamer"].id, on_sub)
     # await eventsub.listen_channel_subscription_gift(sv["streamer"].id, on_giftsub)
     # await eventsub.listen_channel_subscription_message(sv["streamer"].id, on_resub)
     # await eventsub.listen_channel_points_custom_reward_redemption_add(sv["streamer"].id, on_redeem)
     
-    await eventsub.listen_channel_points_custom_reward_redemption_add(sv["streamer"].id, on_redeem_new)
-    await eventsub.listen_channel_cheer(sv["streamer"].id, on_bits_new)
-    await eventsub.listen_channel_subscribe(sv["streamer"].id, on_sub)
-    await eventsub.listen_channel_subscription_gift(sv["streamer"].id, on_giftsub)
-    await eventsub.listen_channel_subscription_message(sv["streamer"].id, on_resub)
+    prompt ("success", "Registering PubSub")
     
-    
-    # pubsub = PubSub(sv["twitch"])
-    # pubsub.start()
-    # redeem_event = await pubsub.listen_channel_points(sv["streamer"].id, on_redeem)
-    # sub_event = await pubsub.listen_channel_subscriptions(sv["streamer"].id, on_sub)
+    pubsub = PubSub(sv["twitch"])
+    pubsub.start()
+    redeem_event = await pubsub.listen_channel_points(sv["streamer"].id, on_redeem)
+    sub_event = await pubsub.listen_channel_subscriptions(sv["streamer"].id, on_sub)
     # whisper_event = await pubsub.listen_whispers(sv["streamer"].id, on_whisper)
-    # bit_event = await pubsub.listen_bits(sv["streamer"].id, on_bits)
+    bit_event = await pubsub.listen_bits(sv["streamer"].id, on_bits)
     
 
     btwitch = await Twitch(sv["id"], sv["secret"])    
