@@ -1,4 +1,4 @@
-__version__ = "beta0041"
+__version__ = "beta0040"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -495,7 +495,6 @@ async def on_redeem_new (data: ChannelPointsCustomRewardRedemptionAddEvent):
         alert["redeem"] = alert["reward"]["title"]
         alert["cost"] = str(alert["reward"]["cost"])
         alert["description"] = alert["reward"]["prompt"]
-        alert["user"] = alert["reward"]["user_name"]
         
         # print (alert)
         # print (alert)

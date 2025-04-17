@@ -1,4 +1,4 @@
-__version__ = "beta0041"
+__version__ = "beta0039"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -495,19 +495,16 @@ async def on_redeem_new (data: ChannelPointsCustomRewardRedemptionAddEvent):
         alert["redeem"] = alert["reward"]["title"]
         alert["cost"] = str(alert["reward"]["cost"])
         alert["description"] = alert["reward"]["prompt"]
-        alert["user"] = alert["reward"]["user_name"]
         
-        # print (alert)
+        print (alert)
         # print (alert)
         
         with open(os.path.join(vdir["configuration"], "redeems.yml"), 'r', encoding = "utf-8") as file:
             redeem_data = yaml.safe_load(file)
-            for r, rd in redeem_data["redeem"].items():
-                if r.lower() in alert["redeem"].lower():
-                    alert["buffer"] = rd["buffer"]
-                    alert["actions"] = rd["actions"]
-                    await addAlert(alert, "0" if rd["queue"] else "end")
-                    break
+            if alert["redeem"] in redeem_data["redeem"]:
+                alert["buffer"] = redeem_data["redeem"][alert["redeem"]]["buffer"]
+                alert["actions"] = redeem_data["redeem"][alert["redeem"]]["actions"]
+                await addAlert(alert, "0" if redeem_data["redeem"][alert["redeem"]]["queue"] else "end")
     
     except:
         logError(tag = "event.on_redeem")
