@@ -1,4 +1,4 @@
-__version__ = "beta0038"
+__version__ = "beta0036"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -371,7 +371,7 @@ async def on_resub (data: ChannelSubscriptionMessageEvent):
     try:
         event = data.event.to_dict(include_none_values=True)
         event["type"] = "resub"
-        event["message"] = event["message"]["text"]
+        event["message"] = event["message"].text
         event["tier"] = {"Prime":"prime","1000":"1","2000":"2","3000":"3"}[event["tier"]]
         await addAlert(event, "end")
     except Exception as e:
@@ -488,15 +488,11 @@ async def on_redeem (d, data):
         
 async def on_redeem_new (data: ChannelPointsCustomRewardRedemptionAddEvent):
     try:
-        
-        event = data.event
-        alert = event.to_dict(include_none_values = False)
+        alert = event.data.to_dict(include_none_values = False)
         alert["type"] = "redeem"
-        alert["redeem"] = alert["reward"]["title"]
-        alert["cost"] = str(alert["reward"]["cost"])
-        alert["description"] = alert["reward"]["prompt"]
-        
-        # print (alert)
+        alert["redeem"] = alert["redeem"]["title"]
+        alert["cost"] = str(alert["redeem"]["cost"])
+        alert["description"] = alert["redeem"]["prompt"]
         
         with open(os.path.join(vdir["configuration"], "redeems.yml"), 'r', encoding = "utf-8") as file:
             redeem_data = yaml.safe_load(file)
