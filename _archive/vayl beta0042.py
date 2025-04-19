@@ -1,4 +1,4 @@
-__version__ = "beta0046"
+__version__ = "beta0042"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -353,7 +353,6 @@ async def on_sub (data: ChannelSubscribeEvent):
     try:
         event = data.event.to_dict()
         event["type"] = "sub"
-        event["user"] = event["user_name"]
         event["tier"] = {"Prime":"prime","1000":"1","2000":"2","3000":"3"}[event["tier"]]
         await addAlert(event, "end")
     except Exception as e:
@@ -362,7 +361,6 @@ async def on_sub (data: ChannelSubscribeEvent):
 async def on_giftsub (data: ChannelSubscriptionGiftEvent):
     try:
         event = data.event.to_dict(include_none_values=True)
-        event["user"] = event["user_name"]
         event["type"] = "giftsub"
         event["tier"] = {"Prime":"prime","1000":"1","2000":"2","3000":"3"}[event["tier"]]
         await addAlert(event, "end")
@@ -372,7 +370,6 @@ async def on_giftsub (data: ChannelSubscriptionGiftEvent):
 async def on_resub (data: ChannelSubscriptionMessageEvent):
     try:
         event = data.event.to_dict(include_none_values=True)
-        event["user"] = event["user_name"]
         event["type"] = "resub"
         event["message"] = event["message"]["text"]
         event["tier"] = {"Prime":"prime","1000":"1","2000":"2","3000":"3"}[event["tier"]]
@@ -461,10 +458,8 @@ async def on_bits (d, data):
         
 async def on_bits_new (data: ChannelCheerEvent):
     try:
-        alert = data.event.to_dict(include_none_values = False)
+        alert = event.data.to_dict(include_none_values = False)
         alert["type"] = "bits"
-        alert["amount"] = str(alert["bits"])
-        alert["user"] = alert["user_name"]
     except Exception as e:
         logError(tag = "event.on_bits")
 ## =================================================================================
@@ -1165,18 +1160,12 @@ async def runActions (actions, variables):
                     now = datetime.now(tz=pytz.UTC)
                     word = word.replace("[uptime:seconds]", str(int((now - uptime).total_seconds())))
                 
-                
                 for type in ["vayl","counter","text","boolean"]:
                     if "[" + type + ":" in word:
-                        newword = "0" if "counter" in type else ""
                         tag = word.split("[" + type + ":")[1].split("]")[0]
+                        with open(os.path.join(vdir["variables"], type, tag + ".txt"), 'r', encoding = "utf-8") as f:
+                            word = word.replace("[" + type + ":" + tag + "]", f.read())
                         
-                        try:
-                            with open(os.path.join(vdir["variables"], type, tag + ".txt"), 'r', encoding = "utf-8") as f:
-                                word = word.replace("[" + type + ":" + tag + "]", f.read())
-                        except:
-                            word = word.replace("[" + type + ":" + tag + "]", newword)
-                           
                 if "[list:" in word:
                     was_list = True
                     tag = word.split("[list:")[1].split("]")[0]
