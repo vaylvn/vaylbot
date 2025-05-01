@@ -1,4 +1,4 @@
-__version__ = "beta0048"
+__version__ = "beta0047"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -23,6 +23,7 @@ import subprocess
 import traceback
 import threading
 import requests
+import requests
 import asyncio
 import random
 import yaml
@@ -41,9 +42,6 @@ from pyt2s.services import ibm_watson
 from pyt2s.services import cepstral
 from pyt2s.services import acapela
 from pyt2s.services import oddcast
-
-from prompt_toolkit import PromptSession
-from prompt_toolkit.patch_stdout import patch_stdout
 
 import obsws_python as obs
 ## =================================================================================
@@ -89,38 +87,6 @@ USER_SCOPE = [AuthScope.USER_READ_SUBSCRIPTIONS, AuthScope.MODERATION_READ, Auth
               AuthScope.CHANNEL_READ_HYPE_TRAIN, AuthScope.CHANNEL_MANAGE_VIPS, AuthScope.CHANNEL_MANAGE_BROADCAST, AuthScope.ANALYTICS_READ_GAMES, AuthScope.MODERATOR_MANAGE_BANNED_USERS,
               AuthScope.MODERATOR_READ_CHATTERS]
 ## =================================================================================
-
-
-console_command_queue = asyncio.Queue()
-
-def console_input_listener(loop):
-    session = PromptSession("> ")
-    with patch_stdout():  # lets async log output play nicely
-        while True:
-            try:
-                user_input = session.prompt()
-                asyncio.run_coroutine_threadsafe(console_command_queue.put(user_input), loop)
-            except Exception as e:
-                print(f"[Console Error] {e}")
-
-async def handle_console_commands():
-    while True:
-        command = await console_command_queue.get()
-        try:
-            print(f"\n[Console] Received command: {command}")
-            # Example command: update-variable text:foo "bar"
-            if command.startswith("update-variable"):
-                _, var_type, name, value = re.split(r"\s+|:", command, maxsplit=3)
-                file_path = os.path.join(vdir[var_type], name + ".txt")
-                with open(file_path, 'w', encoding="utf-8") as f:
-                    f.write(value.strip('"'))
-                print(f"Updated {var_type}:{name} to '{value}'")
-            elif command.startswith("debug"):
-                # Handle debug manually or reuse `c_debug` logic
-                print("Debug triggered")
-        except Exception as e:
-            print(f"Error processing command: {e}")
-
 
 
 ## =================================================================================
@@ -388,7 +354,6 @@ async def on_sub (data: ChannelSubscribeEvent):
         event = data.event.to_dict()
         event["type"] = "sub"
         event["user"] = event["user_name"]
-        event["message"] = ""
         event["tier"] = {"Prime":"prime","1000":"1","2000":"2","3000":"3"}[event["tier"]]
         await addAlert(event, "end")
     except Exception as e:
@@ -1511,56 +1476,6 @@ async def runActions (actions, variables):
         ## =========================================================================
         
         
-        
-        ## TEMP COUNTER ============================================================
-        if action == "counter2":
-                try:
-                
-                    try:
-                        with open(os.getcwd() + "\\data\\variables\\counter\\" + adata["name"] + ".txt", 'r', encoding = "utf-8") as file:
-                            original_counter = float(file.read())
-                    except:
-                        original_counter = 0
-
-                    def safe_eval_counter(expression):
-                        safe_globals = {
-                            "abs": abs,
-                            "round": round,
-                            "math": math,
-                            "random": random,
-                            "min": min,
-                            "max": max,
-                            "__builtins__": None,
-                        }
-                        
-                        try:
-                            result = eval(expression, safe_globals)
-                            if isinstance(result, int):
-                                return result
-                            elif isinstance(result, float):
-                                rounded_result = round(result, 1)
-                                return int(rounded_result) if rounded_result.is_integer() else rounded_result
-                            else:
-                                return original_counter
-                        except Exception as e:
-                            return original_counter
-    
-                    counter = safe_eval_counter(adata["amount"])
-                    try:
-                        with open(os.getcwd() + "\\data\\variables\\counter\\" + adata["name"] + ".txt", 'w', encoding = "utf-8") as file:
-                            file.write(str(counter))
-                    except:
-                        with open(vpath("counter", adata["name"] + ".txt"), 'w', encoding="utf-8") as file:
-                            file.write(str(original_counter))
-                    
-                except Exception as e:
-                    logError(e)
-        ## =========================================================================
-        
-        
-        
-        
-        
         ## counter =================================================================
         if action == "counter":
             try:
@@ -2194,8 +2109,6 @@ async def run():
     sv["chat"].register_event(ChatEvent.RAID, on_raid)
     sv["chat"].start()
     
-    
-    
     t_obs = threading.Thread(target = indexOBS)
     t_obs.start()
     
@@ -2235,10 +2148,6 @@ async def run():
     ## =============================================================================
 
     await addAlert({"type":"vayl-load"}, "0")
-    
-    loop = asyncio.get_running_loop()  # ✅ capture loop here
-    threading.Thread(target=console_input_listener, args=(loop,), daemon=True).start()
-    asyncio.create_task(handle_console_commands())
     
     while True:
         await asyncio.sleep(1)
