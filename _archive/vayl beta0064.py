@@ -1203,7 +1203,6 @@ async def runActions (actions, variables):
                             "counter"        : ["name", "modifier", "amount"],
                             "counter2"       : ["name", "equation"],
                             "boolean"        : ["name", "value"],
-                            "table"          : ["name", "entry", "value"],
                             "console"        : ["message"],
                             "list"           : ["name", "modifier", "text"],
                             "conditional"    : ["name"],
@@ -1237,7 +1236,6 @@ async def runActions (actions, variables):
                         "counter"        : "'counter ; <variable_name> ; <set/increase/decrease/multiply/divide> ; <amount>'",
                         "counter2"       : "'counter2 ; <variable_name> ; <equation>'",
                         "boolean"        : "'boolean ; <variable_name> ; <true/false>'",
-                        "table"          : "'table ; <table_name> ; <entry_name> ; <entry_value>'",
                         "list"           : "'list ; <variable_name> ; <clear/add/remove> ; <text>'",
                         "console"        : "'console ; <message>'",
                         "conditional"    : "'conditional ; <conditional_name>'",
@@ -1395,52 +1393,6 @@ async def runActions (actions, variables):
                     except AttributeError:
                         # Handle malformed tags gracefully
                         pass
-                        
-                 
-                if "[table:" in word:
-                    try:
-                        match = re.search(r"\[table:([\w\-]+):(e|v):([^\]]+)\]", word)
-                        if match:
-                            table_name, mode, index_raw = match.groups()
-
-                            path = os.path.join(os.getcwd(), "data", "variables", "table", f"{table_name}.yml")
-                            with open(path, "r", encoding="utf-8") as file:
-                                data = yaml.safe_load(file) or {}
-
-                            if not isinstance(data, dict) or not data:
-                                replacement = ""
-                            else:
-                                # Try to interpret the index as integer for rank lookup
-                                try:
-                                    index = int(index_raw)
-                                    # Sort high → low
-                                    def sort_key(item):
-                                        val = item[1]
-                                        try:
-                                            return float(val)
-                                        except (ValueError, TypeError):
-                                            return str(val)
-                                    sorted_items = sorted(data.items(), key=sort_key, reverse=True)
-
-                                    idx = index - 1 if index > 0 else index
-                                    key, value = sorted_items[idx] if abs(index) <= len(sorted_items) else ("", "")
-                                    replacement = str(key if mode == "e" else value)
-
-                                except ValueError:
-                                    # Not an int → treat as direct key lookup
-                                    key_name = str(index_raw)
-                                    replacement = str(data.get(key_name, "")) if mode == "v" else key_name
-
-                            # Replace all matches for this tag
-                            word = re.sub(rf"\[table:{table_name}:{mode}:{re.escape(index_raw)}\]", replacement, word)
-
-                    except Exception as e:
-                        print(f"[table] error: {e}")
-                        pass
-
-
-                                                        
-                        
                         
                 if "[rnumber:" in word:
                     min = word.split("[rnumber:")[1].split("-")[0]
@@ -1778,52 +1730,6 @@ async def runActions (actions, variables):
             except Exception as e:
                 logError(tag = "action.boolean", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
-        
-        
-        ## table ===================================================================
-        if action == "table":
-            try:
-                # Define file path
-                path = os.path.join(os.getcwd(), "data", "variables", "table", f"{adata['name']}.yml")
-
-                # Ensure directory exists
-                os.makedirs(os.path.dirname(path), exist_ok=True)
-
-                # Load existing table if present
-                data = {}
-                if os.path.exists(path):
-                    with open(path, "r", encoding="utf-8") as file:
-                        loaded = yaml.safe_load(file)
-                        if isinstance(loaded, dict):
-                            data = loaded
-
-                # Smart type inference for clean YAML
-                val = adata["value"]
-                if isinstance(val, str):
-                    low = val.lower().strip()
-                    if low in ("true", "false"):
-                        val = (low == "true")
-                    elif val.isdigit():
-                        val = int(val)
-                    else:
-                        try:
-                            # Attempt to parse float (handles decimals like 3.49)
-                            val = float(val)
-                        except ValueError:
-                            pass  # Leave as string if not numeric
-
-                # Update / add entry
-                data[str(adata["entry"])] = val
-
-                # Save back to YAML (no key sorting, standard block style)
-                with open(path, "w", encoding="utf-8") as yaml_file:
-                    yaml.dump(data, yaml_file, default_flow_style=False, sort_keys=False)
-
-            except Exception as e:
-                logError(tag="action.table", additional_details=[a, "Expecting: " + action_expected[action], str(e)])
-        ## =========================================================================
-
-
         
         
         

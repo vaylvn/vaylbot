@@ -1,4 +1,4 @@
 enabled: true
 buffer: 0
 actions:
-- chat ; Thanks for following, %user%!
+- chat ; Thanks for following, [user]!

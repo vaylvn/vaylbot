@@ -1,4 +1,4 @@
-__version__ = "beta0064"
+__version__ = "beta0063"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -719,9 +719,6 @@ async def c_custom (cmd: ChatCommand):
                     command = {"user":user, "cmdtext":" ".join(arguments)}
                     for i in range (0, 9999):
                         command["arg" + str(i)] = "" if i >= len(arguments) else (arguments[i].replace("@","",1))
-                        
-                    command["args"] = cmd.parameter
-                        
                     await runActions(data["actions"], command)
                     sv["commands"][cmd.name.lower()]["user-cooldown"][user] = time.time()
     except Exception as e:
@@ -1192,7 +1189,6 @@ async def runActions (actions, variables):
                             "obs:label"      : ["source", "text", "color"],
                             "obs:mediafile"  : ["source", "filepath"],
                             "obs:image"      : ["source", "filepath"],
-                            "obs:media"      : ["source", "state"],
                             "obs:slideshow"  : ["source", "state"],
                             "obs:filter"     : ["source", "filter", "enabled"],
                             "obs:audio"      : ["source", "percentage", "steps", "duration"],
@@ -1201,9 +1197,7 @@ async def runActions (actions, variables):
                             "chat"           : ["message"],
                             "text"           : ["name", "modifier", "text"],
                             "counter"        : ["name", "modifier", "amount"],
-                            "counter2"       : ["name", "equation"],
                             "boolean"        : ["name", "value"],
-                            "table"          : ["name", "entry", "value"],
                             "console"        : ["message"],
                             "list"           : ["name", "modifier", "text"],
                             "conditional"    : ["name"],
@@ -1226,7 +1220,6 @@ async def runActions (actions, variables):
                         "obs:label"      : "'obs:label ; <source_name> ; <text> ; [color]'",
                         "obs:mediafile"  : "'obs:mediafile ; <source_name> ; <file_path>'",
                         "obs:image"      : "'obs:image ; <source_name> ; <file_path>'",
-                        "obs:media"      : "'obs:media ; <source_name> ; <play/pause/stop/restart/next/previous/position>'",
                         "obs:slideshow"  : "'obs:slideshow ; <source_name> ; <play/pause/stop/restart/next/previous/position>'",
                         "obs:filter"     : "'obs:filter ; <source_name> ; <filter_name> ; <enabled/disabled>'",
                         "obs:audio"      : "'obs:audio ; <source_name> ; <percentage> ; <steps> ; <duration>'",
@@ -1235,9 +1228,7 @@ async def runActions (actions, variables):
                         "chat"           : "'chat ; <message>'",
                         "text"           : "'text ; <variable_name> ; <set/append> ; <text>'",
                         "counter"        : "'counter ; <variable_name> ; <set/increase/decrease/multiply/divide> ; <amount>'",
-                        "counter2"       : "'counter2 ; <variable_name> ; <equation>'",
                         "boolean"        : "'boolean ; <variable_name> ; <true/false>'",
-                        "table"          : "'table ; <table_name> ; <entry_name> ; <entry_value>'",
                         "list"           : "'list ; <variable_name> ; <clear/add/remove> ; <text>'",
                         "console"        : "'console ; <message>'",
                         "conditional"    : "'conditional ; <conditional_name>'",
@@ -1276,8 +1267,6 @@ async def runActions (actions, variables):
                                 break
                         if not found:
                             word = word.replace("[nickname:" + name + "]", name)
-            
-
             
                 if "[followers]" in word:
                     counter = 0
@@ -1396,52 +1385,6 @@ async def runActions (actions, variables):
                         # Handle malformed tags gracefully
                         pass
                         
-                 
-                if "[table:" in word:
-                    try:
-                        match = re.search(r"\[table:([\w\-]+):(e|v):([^\]]+)\]", word)
-                        if match:
-                            table_name, mode, index_raw = match.groups()
-
-                            path = os.path.join(os.getcwd(), "data", "variables", "table", f"{table_name}.yml")
-                            with open(path, "r", encoding="utf-8") as file:
-                                data = yaml.safe_load(file) or {}
-
-                            if not isinstance(data, dict) or not data:
-                                replacement = ""
-                            else:
-                                # Try to interpret the index as integer for rank lookup
-                                try:
-                                    index = int(index_raw)
-                                    # Sort high → low
-                                    def sort_key(item):
-                                        val = item[1]
-                                        try:
-                                            return float(val)
-                                        except (ValueError, TypeError):
-                                            return str(val)
-                                    sorted_items = sorted(data.items(), key=sort_key, reverse=True)
-
-                                    idx = index - 1 if index > 0 else index
-                                    key, value = sorted_items[idx] if abs(index) <= len(sorted_items) else ("", "")
-                                    replacement = str(key if mode == "e" else value)
-
-                                except ValueError:
-                                    # Not an int → treat as direct key lookup
-                                    key_name = str(index_raw)
-                                    replacement = str(data.get(key_name, "")) if mode == "v" else key_name
-
-                            # Replace all matches for this tag
-                            word = re.sub(rf"\[table:{table_name}:{mode}:{re.escape(index_raw)}\]", replacement, word)
-
-                    except Exception as e:
-                        print(f"[table] error: {e}")
-                        pass
-
-
-                                                        
-                        
-                        
                 if "[rnumber:" in word:
                     min = word.split("[rnumber:")[1].split("-")[0]
                     max = word.split("[rnumber:")[1].split("-")[1].split("]")[0]
@@ -1479,7 +1422,7 @@ async def runActions (actions, variables):
         arguments = a.split(" ; ")[1:]
         
         if cl is None:
-            if action in ["obs:scene","obs:show","obs:hide","obs:toggle","obs:label","obs:image","obs:mediafile","obs:media","obs:slideshow", "obs:filter", "obs:audio"] or "[obs:scene]" in a:
+            if action in ["obs:scene","obs:show","obs:hide","obs:toggle","obs:label","obs:image","obs:mediafile","obs:slideshow", "obs:filter", "obs:audio"] or "[obs:scene]" in a:
                 with open(os.getcwd() + "\\configuration\\configuration.yml", 'r', encoding = "utf-8") as file:
                     data = yaml.safe_load(file)
                     cl = obs.ReqClient(host='localhost', port=4455, password = data["obs-password"])
@@ -1595,7 +1538,7 @@ async def runActions (actions, variables):
                 label = cl.get_input_settings(adata["source"]).__dict__
                 data = dict(label["input_settings"])
                 
-                # print (data)
+                print (data)
                 
                 if "color" in adata and adata["color"] != "":
                     color_string = str(adata["color"]).replace("0x","")
@@ -1632,22 +1575,6 @@ async def runActions (actions, variables):
                 logError(tag = "obs.mediafile", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
 
-        ## obs:media ===============================================================
-        if action == "obs:media":
-            try:
-                if str(adata["state"]).isnumeric():
-                    cl.set_media_input_cursor(adata["source"], int(adata["state"]))
-                else:
-                    media_actions = { "play" : "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PLAY",
-                                      "pause" : "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PAUSE",
-                                      "stop" : "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_STOP",
-                                      "restart" : "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART",
-                                      "next" : "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_NEXT",
-                                      "previous" : "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_PREVIOUS"}
-                    cl.trigger_media_input_action(adata["source"], media_actions[adata["state"]])
-            except Exception as e:
-                logError(tag = "obs.media", additional_details = [a, "Expecting: " + action_expected[action]])
-        ## =========================================================================
 
         ## obs:slideshow ===========================================================
         if action == "obs:slideshow":
@@ -1778,52 +1705,6 @@ async def runActions (actions, variables):
             except Exception as e:
                 logError(tag = "action.boolean", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
-        
-        
-        ## table ===================================================================
-        if action == "table":
-            try:
-                # Define file path
-                path = os.path.join(os.getcwd(), "data", "variables", "table", f"{adata['name']}.yml")
-
-                # Ensure directory exists
-                os.makedirs(os.path.dirname(path), exist_ok=True)
-
-                # Load existing table if present
-                data = {}
-                if os.path.exists(path):
-                    with open(path, "r", encoding="utf-8") as file:
-                        loaded = yaml.safe_load(file)
-                        if isinstance(loaded, dict):
-                            data = loaded
-
-                # Smart type inference for clean YAML
-                val = adata["value"]
-                if isinstance(val, str):
-                    low = val.lower().strip()
-                    if low in ("true", "false"):
-                        val = (low == "true")
-                    elif val.isdigit():
-                        val = int(val)
-                    else:
-                        try:
-                            # Attempt to parse float (handles decimals like 3.49)
-                            val = float(val)
-                        except ValueError:
-                            pass  # Leave as string if not numeric
-
-                # Update / add entry
-                data[str(adata["entry"])] = val
-
-                # Save back to YAML (no key sorting, standard block style)
-                with open(path, "w", encoding="utf-8") as yaml_file:
-                    yaml.dump(data, yaml_file, default_flow_style=False, sort_keys=False)
-
-            except Exception as e:
-                logError(tag="action.table", additional_details=[a, "Expecting: " + action_expected[action], str(e)])
-        ## =========================================================================
-
-
         
         
         
@@ -2501,7 +2382,7 @@ async def run():
     
     eventsub = EventSubWebsocket(sv["twitch"])
     eventsub.start()
-    
+    await eventsub.listen_channel_follow_v2(sv["streamer"].id, sv["streamer"].id, on_follow)
     await eventsub.listen_stream_online(sv["streamer"].id, on_live)
     # await eventsub.listen_stream_offline(sv["streamer"].id, on_offline)
     # await eventsub.listen_channel_ad_break_begin(sv["streamer"].id, on_ad)
@@ -2511,9 +2392,13 @@ async def run():
     # await eventsub.listen_channel_prediction_lock(sv["streamer"].id, on_prediction_lock)   
     # await eventsub.listen_channel_prediction_end(sv["streamer"].id, on_prediction_end)   
     await eventsub.listen_hype_train_begin(sv["streamer"].id, on_hype_train)   
-    await eventsub.listen_channel_shoutout_create(sv["streamer"].id, sv["streamer"].id, on_shoutout_give)
+    # await eventsub.listen_channel_shoutout_create(sv["streamer"].id, sv["streamer"].id, on_shoutout_give)
     # await eventsub.listen_channel_shoutout_receive(sv["streamer"].id, sv["streamer"].id, on_shoutout_receive)
     # await eventsub.listen_user_whisper_message(sv["streamer"].id, on_whisper)
+    # await eventsub.listen_channel_cheer(sv["streamer"].id, on_bits)
+    # await eventsub.listen_channel_subscribe(sv["streamer"].id, on_sub)
+    # await eventsub.listen_channel_subscription_gift(sv["streamer"].id, on_giftsub)
+    # await eventsub.listen_channel_subscription_message(sv["streamer"].id, on_resub)
     # await eventsub.listen_channel_points_custom_reward_redemption_add(sv["streamer"].id, on_redeem)
     
     await eventsub.listen_channel_points_custom_reward_redemption_update(sv["streamer"].id, on_redeem_update)
@@ -2522,7 +2407,6 @@ async def run():
     await eventsub.listen_channel_subscribe(sv["streamer"].id, on_sub)
     await eventsub.listen_channel_subscription_gift(sv["streamer"].id, on_giftsub)
     await eventsub.listen_channel_subscription_message(sv["streamer"].id, on_resub)
-    await eventsub.listen_channel_follow_v2(sv["streamer"].id, sv["streamer"].id, on_follow)
     
     
     # pubsub = PubSub(sv["twitch"])
@@ -2626,8 +2510,6 @@ error_reference = { "chat.moderation" : "Applying ModerationCheck to chat messag
                     "action.vip" : "Attempting to run 'vip' action.",
                     "action.cmd" : "Attempting to run 'cmd' action.",
                     "action.playsound" : "Attempting to run 'playsound' action.",
-                    "action.slideshow" : "Attempting to run 'slideshow' action.",
-                    "action.media" : "Attempting to run 'media' action.",
                     "action.timeout" : "Attempting to run 'timeout' action.",
                     "action.console" : "Attempting to run 'console' action.",
                     "action.webhook" : "Attempting to run 'webhook' action.",

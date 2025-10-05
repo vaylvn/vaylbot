@@ -1,5 +1,0 @@
-enabled: true
-buffer: 0
-actions:
-- announce ; Be sure to follow %user%! ; purple
-- chat ; "https://www.twitch.tv/%user%, last playing %user:%arg1%:game%!"

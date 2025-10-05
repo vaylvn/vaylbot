@@ -1,4 +1,0 @@
-enabled: true
-buffer: 0
-actions:
-- chat ; A new prediction has been created!

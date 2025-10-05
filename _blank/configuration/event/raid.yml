@@ -1,4 +1,4 @@
 enabled: true
 buffer: 0
 actions:
-- announce ; Welcome %user% raiders! ; purple
+- announce ; [user] coming in with the [viewers] viewers! ; purple
