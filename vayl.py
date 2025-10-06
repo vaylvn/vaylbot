@@ -1,4 +1,4 @@
-__version__ = "beta0064"
+__version__ = "beta0069"
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -12,9 +12,24 @@ from datetime import datetime, timedelta, date
 from collections import OrderedDict
 from twitchAPI.helper import first
 from playsound3 import playsound
+
 from colorama import Fore, Back, Style, init
+init(strip=False, convert=True, autoreset=True)
+from colorama.ansitowin32 import AnsiToWin32
+
 from num2words import num2words
 from collections import deque
+
+from rich.console import Console
+from rich.live import Live
+from rich.panel import Panel
+from rich.text import Text
+from rich.table import Table
+from rich.markup import render
+
+console = Console()
+logs = [" "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "]
+
 
 from textwrap import wrap
 import tldextract
@@ -98,35 +113,7 @@ USER_SCOPE = list(AuthScope)
 ## =================================================================================
 
 
-console_command_queue = asyncio.Queue()
 
-def console_input_listener(loop):
-    session = PromptSession("> ")
-    with patch_stdout():  # lets async log output play nicely
-        while True:
-            try:
-                user_input = session.prompt()
-                asyncio.run_coroutine_threadsafe(console_command_queue.put(user_input), loop)
-            except Exception as e:
-                print(f"[Console Error] {e}")
-
-async def handle_console_commands():
-    while True:
-        command = await console_command_queue.get()
-        try:
-            print(f"\n[Console] Received command: {command}")
-            # Example command: update-variable text:foo "bar"
-            if command.startswith("update-variable"):
-                _, var_type, name, value = re.split(r"\s+|:", command, maxsplit=3)
-                file_path = os.path.join(vdir[var_type], name + ".txt")
-                with open(file_path, 'w', encoding="utf-8") as f:
-                    f.write(value.strip('"'))
-                print(f"Updated {var_type}:{name} to '{value}'")
-            elif command.startswith("debug"):
-                # Handle debug manually or reuse `c_debug` logic
-                print("Debug triggered")
-        except Exception as e:
-            print(f"Error processing command: {e}")
 
 
 
@@ -1130,7 +1117,16 @@ async def manageAlertsAsync():
                     print(f"Error loading YAML for alert {alert['type']}: {e}")
             
             if alert["type"] != "chat" and alert["type"] != "redemption-update":
-                print("Processing alert: " + alert['type'])
+            
+                try:
+                    with open(os.path.join(os.getcwd(), "configuration", "event", alert['type'] + ".yml"), 'r', encoding="utf-8") as file:
+                        data = yaml.safe_load(file)
+                        if data.get("announce", False):
+                            prompt ("misc", "Processing alert: " + alert['type'])
+                except:
+                    pass
+            
+            
             await runActions(actions, alert)
         await asyncio.sleep(buffer)
         
@@ -1477,6 +1473,7 @@ async def runActions (actions, variables):
     
         action = a.split(" ; ")[0]
         arguments = a.split(" ; ")[1:]
+        
         
         if cl is None:
             if action in ["obs:scene","obs:show","obs:hide","obs:toggle","obs:label","obs:image","obs:mediafile","obs:media","obs:slideshow", "obs:filter", "obs:audio"] or "[obs:scene]" in a:
@@ -1929,7 +1926,11 @@ async def runActions (actions, variables):
         ## announce ================================================================
         if action == "announce":
             try:
-                await sv["twitch"].send_chat_announcement(sv["streamer"].id, sv["streamer"].id, adata["message"], adata["color"])
+            
+                await sv["btwitch"].send_chat_announcement(sv["streamer"].id, sv["btwitch_user"].id, adata["message"], adata["color"])
+    
+            
+                # await sv["twitch"].send_chat_announcement(sv["streamer"].id, sv["id"], adata["message"], adata["color"])
             except Exception as e:
                 logError(tag = "action.announce", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
@@ -2248,40 +2249,9 @@ async def runActions (actions, variables):
 ## =================================================================================
 
 
-## PrintLogo =======================================================================
-async def printLogo():
-    lines = [" ", " ",
-             "####       ...       ####",
-             " ####     .....     ####", 
-             "  ####   ... ...   ####",
-             "   ####....   ....####",
-             "     #....     ..###",
-             "     ...##     ####.",
-             "    ...####   ####...",
-             "  ....  #### ####  ....",
-             " ....     #####     ....",
-             "....       ###       ....",
-             " "," "]
-
-    for line in lines:
-        sys.stdout.write((" " * 20))
-        for char in line:   
-            sys.stdout.write(char.replace("#", Style.BRIGHT + Fore.RED + "#" + Style.RESET_ALL).replace(".", Style.BRIGHT + Fore.WHITE + "#" + Style.RESET_ALL))
-            sys.stdout.flush()
-            await asyncio.sleep(0.005)   
-        print()
-
-## =================================================================================
 
 
-## Prompt ==========================================================================
-def prompt (type, message):
-    try:
-        icon = { "success" : Fore.GREEN, "error" : Fore.RED, "misc" : Fore.WHITE, "blank" : Fore.BLACK }
-        print (Style.BRIGHT + icon[type] + "• " + Style.RESET_ALL + message)
-    except:
-        logError(tag = "vayl.prompt")
-## =================================================================================
+
 
 
 ## Reload ==========================================================================
@@ -2448,6 +2418,8 @@ def logError(tag = None, additional_details = None):
     except Exception:
         # Handle exceptions silently to avoid recursive error logging
         pass
+        
+
 
 ## =================================================================================
 
@@ -2482,16 +2454,14 @@ async def run():
     prompt ("success", "Launching Vayl (" + __version__ + ")")
     prompt ("success", "Loading Authentication")
     
+
     sv["twitch"] = await Twitch(sv["id"], sv["secret"])
     auth = UserAuthenticator(sv["twitch"], USER_SCOPE, force_verify = True)
     token, refresh = await auth.authenticate()
-    
-    # print (token)
-    # print (refresh)
-    
     await sv["twitch"].set_user_authentication(token, USER_SCOPE, refresh)
     
-    await printLogo()
+
+
     
     prompt ("success", "Fetching Twitch User")
     
@@ -2502,40 +2472,37 @@ async def run():
     eventsub = EventSubWebsocket(sv["twitch"])
     eventsub.start()
     
-    await eventsub.listen_stream_online(sv["streamer"].id, on_live)
-    # await eventsub.listen_stream_offline(sv["streamer"].id, on_offline)
-    # await eventsub.listen_channel_ad_break_begin(sv["streamer"].id, on_ad)
-    await eventsub.listen_channel_poll_begin(sv["streamer"].id, on_poll_start)
-    # await eventsub.listen_channel_poll_end(sv["streamer"].id, on_poll_end)
-    # await eventsub.listen_channel_prediction_begin(sv["streamer"].id, on_prediction_start)    
-    # await eventsub.listen_channel_prediction_lock(sv["streamer"].id, on_prediction_lock)   
-    # await eventsub.listen_channel_prediction_end(sv["streamer"].id, on_prediction_end)   
-    await eventsub.listen_hype_train_begin(sv["streamer"].id, on_hype_train)   
-    await eventsub.listen_channel_shoutout_create(sv["streamer"].id, sv["streamer"].id, on_shoutout_give)
-    # await eventsub.listen_channel_shoutout_receive(sv["streamer"].id, sv["streamer"].id, on_shoutout_receive)
-    # await eventsub.listen_user_whisper_message(sv["streamer"].id, on_whisper)
-    # await eventsub.listen_channel_points_custom_reward_redemption_add(sv["streamer"].id, on_redeem)
+    handlers = [
+        eventsub.listen_stream_online(sv["streamer"].id, on_live),
+        eventsub.listen_stream_offline(sv["streamer"].id, on_offline),
+        eventsub.listen_channel_ad_break_begin(sv["streamer"].id, on_ad),
+        eventsub.listen_channel_poll_begin(sv["streamer"].id, on_poll_start),
+        eventsub.listen_channel_poll_end(sv["streamer"].id, on_poll_end),
+        eventsub.listen_channel_prediction_begin(sv["streamer"].id, on_prediction_start),
+        eventsub.listen_channel_prediction_lock(sv["streamer"].id, on_prediction_lock),
+        eventsub.listen_channel_prediction_end(sv["streamer"].id, on_prediction_end),
+        eventsub.listen_hype_train_begin(sv["streamer"].id, on_hype_train),
+        eventsub.listen_channel_shoutout_create(sv["streamer"].id, sv["streamer"].id, on_shoutout_give),
+        eventsub.listen_channel_points_custom_reward_redemption_add(sv["streamer"].id, on_redeem_new),
+        eventsub.listen_channel_points_custom_reward_redemption_update(sv["streamer"].id, on_redeem_update),
+        eventsub.listen_channel_cheer(sv["streamer"].id, on_bits_new),
+        eventsub.listen_channel_subscribe(sv["streamer"].id, on_sub),
+        eventsub.listen_channel_subscription_gift(sv["streamer"].id, on_giftsub),
+        eventsub.listen_channel_subscription_message(sv["streamer"].id, on_resub),
+        eventsub.listen_channel_follow_v2(sv["streamer"].id, sv["streamer"].id, on_follow),
+    ]
+    await asyncio.gather(*handlers)
+        
+
     
-    await eventsub.listen_channel_points_custom_reward_redemption_update(sv["streamer"].id, on_redeem_update)
-    await eventsub.listen_channel_points_custom_reward_redemption_add(sv["streamer"].id, on_redeem_new)
-    await eventsub.listen_channel_cheer(sv["streamer"].id, on_bits_new)
-    await eventsub.listen_channel_subscribe(sv["streamer"].id, on_sub)
-    await eventsub.listen_channel_subscription_gift(sv["streamer"].id, on_giftsub)
-    await eventsub.listen_channel_subscription_message(sv["streamer"].id, on_resub)
-    await eventsub.listen_channel_follow_v2(sv["streamer"].id, sv["streamer"].id, on_follow)
-    
-    
-    # pubsub = PubSub(sv["twitch"])
-    # pubsub.start()
-    # redeem_event = await pubsub.listen_channel_points(sv["streamer"].id, on_redeem)
-    # sub_event = await pubsub.listen_channel_subscriptions(sv["streamer"].id, on_sub)
-    # whisper_event = await pubsub.listen_whispers(sv["streamer"].id, on_whisper)
-    # bit_event = await pubsub.listen_bits(sv["streamer"].id, on_bits)
-    
+
 
     btwitch = await Twitch(sv["id"], sv["secret"])    
     # await btwitch.set_user_authentication("fi7d5m18fm1zmcgfabax16xssvvddc", USER_SCOPE, "qudyvazycvc2ef557n0m4prkg84zbpafgbxkq1u2uxh2fck7jm")
     await btwitch.set_user_authentication("lhx0q9xhwt8z94kaeofh8py1uzzjb5", USER_SCOPE, "knwm50obq6mx13x53e3rc5gswazsgdxjzdv92c7qm58cvo0mg2")
+    sv["btwitch"] = btwitch
+    sv["btwitch_user"] = await first(sv["btwitch"].get_users(logins = ["vaylbot"]))
+    
     
     prompt ("success", "Connecting to Chat")
     
@@ -2587,14 +2554,67 @@ async def run():
 
     await addAlert({"type":"vayl-load"}, "0")
     
-    loop = asyncio.get_running_loop()  # ✅ capture loop here
-    threading.Thread(target=console_input_listener, args=(loop,), daemon=True).start()
-    asyncio.create_task(handle_console_commands())
+
     
     while True:
         await asyncio.sleep(1)
 
 ## =================================================================================
+
+
+# --- Build header ---
+def build_header():
+    header_text = Text.assemble(
+        ("Vayl", "bold red"),
+        ("  |  ", "bright_black"),
+        (f"Version {__version__}", "white")
+    )
+    return Panel(header_text, border_style="red", expand=True)
+
+
+# --- Build log area ---
+def build_log_panel():
+
+    global logs
+    # ✅ NEW: keep only the most recent N lines so old ones scroll off naturally
+    MAX_VISIBLE = 18
+    if len(logs) > MAX_VISIBLE:
+        logs = logs[-MAX_VISIBLE:]
+
+    table = Table(show_header=False, box=None, expand=True)
+    for line in logs:
+        table.add_row(Text.from_markup(line))
+    return Panel(table, border_style="bright_black", expand=True)
+
+
+# --- Background display updater ---
+async def console_ui():
+    with Live(console=console, refresh_per_second=8, screen=False) as live:
+        while True:
+            header = build_header()
+            log_panel = build_log_panel()
+            live.update(Panel(log_panel.renderable, title="Vayl (" + __version__ + ")", border_style="white"))
+
+            await asyncio.sleep(0.25)
+
+# --- Prompt function ---
+def prompt(kind: str, message: str):
+    icons = {
+        "success": ("[+]", "green"),
+        "error":   ("[!]", "red"),
+        "warn":    ("[~]", "yellow"),
+        "info":    ("[>]", "cyan"),
+        "misc":    ("[·]", "white"),
+        "blank":   ("   ", "bright_black"),
+    }
+    sym, color = icons.get(kind, icons["misc"])
+    timestamp = datetime.now().strftime("%H:%M:%S")
+
+    # proper Rich markup
+    line = f"[dim][{timestamp}][/dim] [{color}]{sym}[/] {message}"
+    
+    logs.append(line)
+
 
 
 ## =================================================================================
@@ -2686,13 +2706,30 @@ error_reference = { "chat.moderation" : "Applying ModerationCheck to chat messag
 
  
  
+def set_console_size(cols=80, lines=20):
+    """Force smaller console dimensions on Windows only."""
+    if os.name == "nt":
+        try:
+            import ctypes
+            ctypes.windll.kernel32.SetConsoleTitleW("Vayl")
+            os.system(f"mode con: cols={cols} lines={lines}")
+        except Exception:
+            pass
  
  
  
  
+async def main():
+    # run both concurrently
+    await asyncio.gather(
+        console_ui(),  # live console refresh
+        run(),         # your Twitch logic
+    )
+
+
+if __name__ == "__main__":
+    set_console_size()
+    asyncio.run(main())
  
  
- 
- 
-init()
-asyncio.run(run())
+
