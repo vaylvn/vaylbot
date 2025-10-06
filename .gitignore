@@ -1,9 +1,11 @@
 
+/_archive
 /_misc
 /_zip
 /configuration
 /data
-vaylold.py
+/build
+/dist
 *.spec
 *.bat
-/build
+
