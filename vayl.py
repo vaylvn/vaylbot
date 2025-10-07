@@ -1102,9 +1102,9 @@ async def manageAlertsAsync():
                             actions = data["actions"]
                             buffer = data.get("buffer", 1)
                 except FileNotFoundError:
-                    print(f"YAML file not found for alert type: {alert['type']}")
+                    prompt ("error", "YAML file not found for alert type: " + alert["type"])
                 except Exception as e:
-                    print(f"Error loading YAML for alert {alert['type']}: {e}")
+                    prompt ("error", "Error loading YAML for alert type: " + alert["type"])
             
             if alert["type"] != "chat" and alert["type"] != "redemption-update":
             
@@ -1238,7 +1238,7 @@ async def runActions (actions, variables):
                         "actionpack"     : "'actionpack ; <name>'"}
                         
 
-
+    '''
     async def processTags (phrase, is_conditional):
         
         was_list = False
@@ -1421,7 +1421,6 @@ async def runActions (actions, variables):
                             word = re.sub(rf"\[table:{table_name}:{mode}:{re.escape(index_raw)}\]", replacement, word)
 
                     except Exception as e:
-                        print(f"[table] error: {e}")
                         pass
 
 
@@ -1454,15 +1453,483 @@ async def runActions (actions, variables):
         
         # print (phrase_split)
         return " ".join(phrase_split)
-        
+    '''
+
+
+    async def processTags(phrase: str, is_conditional: bool):
+        """
+        Resolve all custom [tags] in a phrase string, including nested tags.
+        Tags are expanded from the innermost → outermost layer using a
+        controlled regex loop that detects bracketed sections.
+        """
+
+        # ================================================================
+        #  INTERNAL: Runs a single "pass" of tag replacement for one word
+        #  ===============================================================
+        async def resolve_once(word: str) -> str:
+            """
+            Perform one layer of tag replacement on a single word.
+            Called repeatedly until all nested tags are resolved.
+            """
+
+            # ------------------------------------------------------------
+            # 1. Replace simple variable placeholders
+            # ------------------------------------------------------------
+            for tag, value in variables.items():
+                word = word.replace(f"[{tag}]", str(value))
+
+            # ------------------------------------------------------------
+            # 2. Nickname lookup from YAML (defaults to the same name)
+            # ------------------------------------------------------------
+            if "[nickname:" in word:
+                name = word.split("[nickname:")[1].split("]")[0]
+                path = os.path.join(vdir["configuration"], "nicknames.yml")
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        data = yaml.safe_load(f) or {}
+                    nickname = next((v for n, v in data.items() if n.lower() == name.lower()), name)
+                    word = word.replace(f"[nickname:{name}]", nickname)
+                except Exception:
+                    # Fallback: leave original name
+                    word = word.replace(f"[nickname:{name}]", name)
+
+            # ------------------------------------------------------------
+            # [viewers] → current live viewer count (0 if offline)
+            # ------------------------------------------------------------
+            if "[viewers]" in word:
+                try:
+                    # Fetch the current stream info for the broadcaster
+                    async for stream in await sv["twitch"].get_streams(user_id=[sv["streamer"].id]):
+                        count = getattr(stream, "viewer_count", 0)
+                        break
+                    else:
+                        count = 0  # no active stream returned
+
+                    word = word.replace("[viewers]", str(count))
+
+                except Exception:
+                    # fallback to 0 if API call fails or streamer offline
+                    word = word.replace("[viewers]", "0")
+
+            # ------------------------------------------------------------
+            # [uptime(:mode or custom pattern)] → stream uptime in various formats
+            # ------------------------------------------------------------
+            if "[uptime" in word:
+                try:
+                    async for stream in await sv["twitch"].get_streams(user_id=[sv["streamer"].id]):
+                        started_at = stream.started_at.replace(tzinfo=pytz.UTC)
+                        now = datetime.now(tz=pytz.UTC)
+                        elapsed = now - started_at
+                        total_seconds = int(elapsed.total_seconds())
+
+                        # Time breakdown
+                        days, remainder = divmod(total_seconds, 86400)
+                        hours, remainder = divmod(remainder, 3600)
+                        minutes, seconds = divmod(remainder, 60)
+
+                        # Match tag and extract mode/pattern
+                        match = re.search(r"\[uptime(?::([^\]]+))?\]", word)
+                        mode = match.group(1) if match else None
+
+                        if not mode:
+                            result = f"{hours}h {minutes}m {seconds}s"
+                        elif mode == "seconds":
+                            result = str(total_seconds)
+                        elif mode == "minutes":
+                            result = str(total_seconds // 60)
+                        elif mode == "hours":
+                            result = str(total_seconds // 3600)
+                        elif mode == "days":
+                            result = str(total_seconds // 86400)
+                        elif mode == "full":
+                            result = f"{days} Days, {hours} Hours, {minutes} Minutes, {seconds} Seconds"
+                        elif mode == "clean":
+                            # Skip leading zero units but keep continuity
+                            units = [("Days", days), ("Hours", hours), ("Minutes", minutes), ("Seconds", seconds)]
+                            start_index = next((i for i, (_, v) in enumerate(units) if v > 0), len(units) - 1)
+                            relevant = units[start_index:]
+                            result = ", ".join(f"{v} {n}" for n, v in relevant)
+                        elif any(p in mode for p in ["{H}", "{M}", "{S}", "{D}", "{TOTAL_S}", "{TOTAL_M}", "{TOTAL_H}", "{HH}", "{MM}", "{SS}"]):
+                            # Handle inline custom pattern
+                            HH, MM, SS = str(hours).zfill(2), str(minutes).zfill(2), str(seconds).zfill(2)
+                            result = (
+                                mode.replace("{D}", str(days))
+                                    .replace("{H}", str(hours))
+                                    .replace("{M}", str(minutes))
+                                    .replace("{S}", str(seconds))
+                                    .replace("{HH}", HH)
+                                    .replace("{MM}", MM)
+                                    .replace("{SS}", SS)
+                                    .replace("{TOTAL_S}", str(total_seconds))
+                                    .replace("{TOTAL_M}", str(total_seconds // 60))
+                                    .replace("{TOTAL_H}", str(total_seconds // 3600))
+                            )
+                        else:
+                            result = "Invalid format"
+
+                        word = re.sub(r"\[uptime(?::[^\]]+)?\]", result, word)
+                        break
+                    else:
+                        word = re.sub(r"\[uptime(?::[^\]]+)?\]", "Offline", word)
+                except Exception:
+                    word = re.sub(r"\[uptime(?::[^\]]+)?\]", "Offline", word)
+
+
+            # ------------------------------------------------------------
+            # 3. Follower count
+            # ------------------------------------------------------------
+            if "[followers]" in word:
+                count = 0
+                async for follower in await sv["twitch"].get_channel_followers(broadcaster_id=sv["streamer"].id):
+                    count += 0 if follower.user_name.lower() == "vaylbot" else 1
+                word = word.replace("[followers]", str(count))
+
+            # ------------------------------------------------------------
+            # [rfollower(:<count>)] → random unique follower(s)
+            # ------------------------------------------------------------
+            if "[rfollower" in word:
+                try:
+                    followers = []
+                    async for follower in await sv["twitch"].get_channel_followers(broadcaster_id=sv["streamer"].id):
+                        if follower.user_name.lower() != "vaylbot":
+                            followers.append(follower.user_name)
+
+                    if followers:
+                        match = re.search(r"\[rfollower:(\d+)\]", word)
+                        if match:
+                            count = int(match.group(1))
+                            sample = random.sample(followers, min(count, len(followers)))
+                            word = word.replace(match.group(0), ", ".join(sample))
+                        elif "[rfollower]" in word:
+                            word = word.replace("[rfollower]", random.choice(followers))
+                    else:
+                        word = re.sub(r"\[rfollower(?::\d+)?\]", "", word)
+                except Exception:
+                    word = re.sub(r"\[rfollower(?::\d+)?\]", "", word)
+
+
+            # ------------------------------------------------------------
+            # 5. Subscriber count
+            # ------------------------------------------------------------
+            if "[subscribers]" in word:
+                count = 0
+                async for sub in await sv["twitch"].get_broadcaster_subscriptions(sv["streamer"].id):
+                    count += 0 if sub.user_name.lower() == "vaylbot" else 1
+                word = word.replace("[subscribers]", str(count))
+
+            # ------------------------------------------------------------
+            # [rsubscriber(:<count>)] → random unique subscriber(s)
+            # ------------------------------------------------------------
+            if "[rsubscriber" in word:
+                try:
+                    # Fetch subscriber list (excluding Vaylbot)
+                    subs = []
+                    async for sub in await sv["twitch"].get_broadcaster_subscriptions(sv["streamer"].id):
+                        if sub.user_name.lower() != "vaylbot":
+                            subs.append(sub.user_name)
+
+                    if subs:
+                        # Check for [rsubscriber:x]
+                        match = re.search(r"\[rsubscriber:(\d+)\]", word)
+                        if match:
+                            count = int(match.group(1))
+                            sample = random.sample(subs, min(count, len(subs)))
+                            word = word.replace(match.group(0), ", ".join(sample))
+                        elif "[rsubscriber]" in word:
+                            # Single random subscriber (legacy form)
+                            word = word.replace("[rsubscriber]", random.choice(subs))
+                    else:
+                        # No subs found
+                        word = re.sub(r"\[rsubscriber(?::\d+)?\]", "", word)
+                except Exception:
+                    word = re.sub(r"\[rsubscriber(?::\d+)?\]", "", word)
+
+
+            # ------------------------------------------------------------
+            # [table:<name>:<mode>:<index>]  → read from YAML-based table
+            #   mode = "e" → return entry/key name
+            #   mode = "v" → return value
+            #   index = number (rank position) or key name
+            # ------------------------------------------------------------
+            if "[table:" in word:
+                try:
+                    for match in re.finditer(r"\[table:([\w\-]+):(e|v):([^\]]+)\]", word):
+                        table_name, mode, index_raw = match.groups()
+                        path = os.path.join(os.getcwd(), "data", "variables", "table", f"{table_name}.yml")
+
+                        # Load YAML safely
+                        data = {}
+                        if os.path.exists(path):
+                            with open(path, "r", encoding="utf-8") as file:
+                                data = yaml.safe_load(file) or {}
+
+                        replacement = ""
+                        if isinstance(data, dict) and data:
+                            try:
+                                # If index is numeric → sort by value (desc) and get Nth item
+                                index = int(index_raw)
+
+                                def sort_key(item):
+                                    val = item[1]
+                                    try:
+                                        return float(val)
+                                    except (ValueError, TypeError):
+                                        return str(val)
+
+                                sorted_items = sorted(data.items(), key=sort_key, reverse=True)
+                                idx = index - 1 if index > 0 else index
+                                key, value = sorted_items[idx] if abs(index) <= len(sorted_items) else ("", "")
+                                replacement = str(key if mode == "e" else value)
+
+                            except ValueError:
+                                # Non-numeric index → treat as direct key lookup
+                                key_name = str(index_raw)
+                                replacement = str(data.get(key_name, "")) if mode == "v" else key_name
+
+                        # Replace this specific tag instance only
+                        word = word.replace(match.group(0), replacement)
+
+                except Exception:
+                    # Silently strip malformed tags to avoid breaking the console
+                    word = re.sub(r"\[table:[\w\-]+:(e|v):[^\]]+\]", "", word)
+
+            
+
+
+            # ------------------------------------------------------------
+            # 7. Date & Time tags (static, no async)
+            # ------------------------------------------------------------
+            word = word.replace("[system:dateus]", date.today().strftime("%m/%d/%y"))
+            word = word.replace("[system:dateuk]", date.today().strftime("%d/%m/%y"))
+            word = word.replace("[system:time]", datetime.now().strftime("%H:%M:%S"))
+
+            # ------------------------------------------------------------
+            # 8. Random number range  →  [rnumber:min-max]
+            # ------------------------------------------------------------
+            word = re.sub(
+                r"\[rnumber:([+-]?\d+)-([+-]?\d+)\]",
+                lambda m: str(random.randint(int(m.group(1)), int(m.group(2)))),
+                word,
+            )
+
+            # ------------------------------------------------------------
+            # 9. Repeat a string  →  [xstring:text:count]
+            # ------------------------------------------------------------
+            word = re.sub(
+                r"\[xstring:([^:]+):([+-]?\d+)\]",
+                lambda m: m.group(1) * int(m.group(2)) if int(m.group(2)) >= 0 else "",
+                word,
+            )
+
+            # ------------------------------------------------------------
+            # 10. Variable files (text, counters, booleans, etc.)
+            # ------------------------------------------------------------
+            for vtype in ["vayl", "counter", "text", "boolean"]:
+                if f"[{vtype}:" in word:
+                    tag = word.split(f"[{vtype}:")[1].split("]")[0]
+                    path = os.path.join(vdir["variables"], vtype, f"{tag}.txt")
+                    default = "0" if vtype == "counter" else ""
+                    try:
+                        with open(path, "r", encoding="utf-8") as f:
+                            content = f.read().strip()
+                        word = word.replace(f"[{vtype}:{tag}]", content)
+                    except Exception:
+                        # Fallback if missing file or read error
+                        word = word.replace(f"[{vtype}:{tag}]", default)
+
+            
+            # ------------------------------------------------------------
+            # [list:<name>] → Replaces with file contents
+            # ------------------------------------------------------------
+            if "[list:" in word:
+                try:
+                    # Extract list name
+                    tag = word.split("[list:")[1].split("]")[0]
+                    path = os.path.join(vdir["list"], f"{tag}.txt")
+
+                    # Read list entries safely
+                    if os.path.exists(path):
+                        with open(path, "r", encoding="utf-8") as f:
+                            entries = [line.strip() for line in f if line.strip()]
+                    else:
+                        entries = []
+
+                    # Format output depending on context
+                    if is_conditional:
+                        # Conditional mode → usable inside Python-style logic
+                        # e.g. ['"a"', '"b"'] → ["a", "b"]
+                        formatted = "[" + ", ".join(f'"{entry}"' for entry in entries) + "]"
+                    else:
+                        # Regular usage → human-readable inline list
+                        formatted = ", ".join(entries)
+
+                    # Replace the tag with formatted text
+                    word = word.replace(f"[list:{tag}]", formatted)
+
+                except Exception:
+                    # Gracefully remove unresolved tag on error
+                    word = re.sub(r"\[list:[^\]]+\]", "", word)
+            
+            
+            # ------------------------------------------------------------
+            # [rlist:<name>] or [rlist:<name>:<count>] → random list entries
+            # ------------------------------------------------------------
+            if "[rlist:" in word:
+                try:
+                    # Find all matches (supports multiple per message)
+                    for match in re.finditer(r"\[rlist:([^:\]]+)(?::(\d+))?\]", word):
+                        name, count = match.groups()
+                        count = int(count) if count else 1  # default to 1
+                        path = os.path.join(vdir["list"], f"{name}.txt")
+
+                        entries = []
+                        if os.path.exists(path):
+                            with open(path, "r", encoding="utf-8") as f:
+                                entries = [line.strip() for line in f if line.strip()]
+
+                        if entries:
+                            sample = random.sample(entries, min(count, len(entries)))
+                            replacement = ", ".join(sample)
+                        else:
+                            replacement = ""
+
+                        word = word.replace(match.group(0), replacement)
+                except Exception:
+                    word = re.sub(r"\[rlist:[^:\]]+(?::\d+)?\]", "", word)
+
+            
+            # ------------------------------------------------------------
+            # [clist:<name>:<value>] → count how many times a value appears in list file
+            # ------------------------------------------------------------
+            if "[clist:" in word:
+                try:
+                    match = re.search(r"\[clist:([^:\]]+):([^:\]]+)\]", word)
+                    if match:
+                        name, text = match.groups()
+                        path = os.path.join(vdir["list"], f"{name}.txt")
+
+                        if os.path.exists(path):
+                            with open(path, "r", encoding="utf-8") as f:
+                                entries = [line.strip() for line in f if line.strip()]
+                            count = entries.count(text)
+                        else:
+                            count = 0
+
+                        word = word.replace(match.group(0), str(count))
+                except Exception:
+                    word = re.sub(r"\[clist:[^:\]]+:[^:\]]+\]", "0", word)
+
+
+            # ------------------------------------------------------------
+            # [toplist:<name>] → get the most common entry in a list file
+            # ------------------------------------------------------------
+            if "[toplist:" in word:
+                try:
+                    match = re.search(r"\[toplist:([^:\]]+)\]", word)
+                    if match:
+                        name = match.group(1)
+                        path = os.path.join(vdir["list"], f"{name}.txt")
+
+                        if os.path.exists(path):
+                            with open(path, "r", encoding="utf-8") as f:
+                                entries = [line.strip() for line in f if line.strip()]
+
+                            if entries:
+                                from collections import Counter
+                                counts = Counter(entries)
+                                # Sort by count (descending), then alphabetically
+                                leaderboard = sorted(counts.items(), key=lambda x: (-x[1], x[0]))
+                                top_entry = leaderboard[0][0] if leaderboard else ""
+                                word = word.replace(match.group(0), top_entry)
+                            else:
+                                word = word.replace(match.group(0), "")
+                        else:
+                            word = word.replace(match.group(0), "")
+                except Exception:
+                    word = re.sub(r"\[toplist:[^:\]]+\]", "", word)
+
+
+            # ------------------------------------------------------------
+            # [ruser(:<count>)] → random unique chatter(s)
+            # ------------------------------------------------------------
+            if "[ruser" in word:
+                try:
+                    users = []
+                    async for chatter in await sv["twitch"].get_chatters(sv["streamer"].id, sv["streamer"].id):
+                        if chatter.user.name.lower() != "vaylbot":
+                            users.append(chatter.user_name)
+
+                    if users:
+                        match = re.search(r"\[ruser:(\d+)\]", word)
+                        if match:
+                            count = int(match.group(1))
+                            sample = random.sample(users, min(count, len(users)))
+                            word = word.replace(match.group(0), ", ".join(sample))
+                        elif "[ruser]" in word:
+                            word = word.replace("[ruser]", random.choice(users))
+                    else:
+                        word = re.sub(r"\[ruser(?::\d+)?\]", "", word)
+                except Exception:
+                    word = re.sub(r"\[ruser(?::\d+)?\]", "", word)
+
+
+            # ------------------------------------------------------------
+            # 12. User’s current game  →  [ugame:username]
+            # ------------------------------------------------------------
+            if "[ugame:" in word:
+                name = word.split("[ugame:")[1].split("]")[0]
+                found_game = ""
+                async for users in sv["twitch"].get_users(logins=[name]):
+                    infos = await sv["twitch"].get_channel_information(users.id)
+                    found_game = infos[0].game_name or "something..."
+                word = word.replace(f"[ugame:{name}]", found_game)
+
+            # Return resolved result for this pass
+            return word
+
+        # ================================================================
+        #  MAIN: Process all tags, resolving inner → outer iteratively
+        # ================================================================
+        pattern = re.compile(r"\[[^\[\]]+\]")  # Regex: match any [ ... ] without nested brackets
+        last = None
+
+        # Keep looping while there are still bracketed tags to resolve
+        while last != phrase and pattern.search(phrase):
+            last = phrase
+            words = phrase.split(" ")   # Handle each word separately
+            resolved = []
+
+            for w in words:
+                try:
+                    # Resolve one layer of tags for each word
+                    resolved.append(await resolve_once(w))
+                except Exception:
+                    # Never crash — log error and keep original text
+                    logError(tag="action.tags")
+                    resolved.append(w)
+
+            # Rebuild phrase for the next loop
+            phrase = " ".join(resolved)
+
+        # Once no [tags] remain, return the final text
+        return phrase
 
 
 
     for a in actions:
-
     
-        action = a.split(" ; ")[0]
-        arguments = a.split(" ; ")[1:]
+        a = a.strip()
+        if not a or a.startswith("#"):
+            continue
+
+        # Use new '|' separator if found, otherwise fall back to old ';'
+        if "|" in a:
+            parts = [x.strip() for x in a.split("|")]
+        else:
+            parts = [x.strip() for x in a.split(";")]
+
+        action = parts[0].lower()
+        arguments = parts[1:]
         
         
         if cl is None:
@@ -1519,44 +1986,7 @@ async def runActions (actions, variables):
                 logError(tag = "obs.modifysource", additional_details = [a, "Expecting: " + action_expected["obs:" + source_action]])
         ## =========================================================================
 
-        '''
-        ## ModifySource ============================================================
-        def modifySource (source_name, source_action):
-            try:
-                found = False
-                for scene in sv["obs"]["scenes"]:
-                    for item in cl.get_scene_item_list(scene).__dict__["scene_items"]:
-                        if source_name == item["sourceName"]:
-                            id = item['sceneItemId']
-                            # id = cl.get_scene_item_id(scene, adata["source"], offset = None).__dict__["scene_item_id"] 
-                            if "show" in source_action or "hide" in source_action:
-                                cl.set_scene_item_enabled(scene, id, True if "show" in source_action else False)
-                            else:
-                                enabled = bool(cl.get_scene_item_enabled(scene, id).__dict__["scene_item_enabled"])
-                                cl.set_scene_item_enabled(scene, id, not enabled)
-                            found = True
-                if not found:
-                    for group in sv["obs"]["groups"]:
-                        for item in cl.get_group_scene_item_list(group).__dict__["scene_items"]:
-                            # print (item)
-                            if source_name == item["sourceName"]:
-                            
-                                id = item['sceneItemId']
-                                
-                                # id = cl.get_scene_item_id(group, adata["source"], offset = None).__dict__["scene_item_id"] 
-                                
-                                if "show" in source_action or "hide" in source_action:
-                                    cl.set_scene_item_enabled(group, id, True if "show" in source_action else False)
-                                else:
-                                    enabled = bool(cl.get_scene_item_enabled(group, id).__dict__["scene_item_enabled"])
-                                    cl.set_scene_item_enabled(group, id, not enabled)
-                            found = True
-                if not found:
-                    prompt ("misc", "Unable to find source: " + adata["source"])
-            except Exception as e:
-                logError(tag = "obs.modifysource", additional_details = [a, "Expecting: " + action_expected["obs:" + source_action]])
-        ## =========================================================================
-        '''
+
 
         ## obs:scene ===============================================================
         if action == "obs:scene":
@@ -1702,7 +2132,7 @@ async def runActions (actions, variables):
                         cl.set_input_volume(source, vol_db=target)
 
             except Exception as e:
-                print(f"OBS:Audio Error: {e}")
+                pass
         ## ==========================================================================================
         
         ## wait ====================================================================
@@ -1994,7 +2424,7 @@ async def runActions (actions, variables):
         ## log =====================================================================
         if action == "console":
             try:
-                print(adata["message"])
+                prompt ("misc", adata["message"])
             except Exception as e:
                 logError(tag = "action.console", additional_details = [a, "Expecting: " + action_expected[action]])
         ## =========================================================================
@@ -2606,6 +3036,7 @@ error_reference = { "chat.moderation" : "Applying ModerationCheck to chat messag
                     "action.console" : "Attempting to run 'console' action.",
                     "action.webhook" : "Attempting to run 'webhook' action.",
                     "action.conditional" : "Attempting to run 'conditional' action.",
+                    "action.table" : "Attempting to run 'table' action.",
                     "action.tts" : "Attempting to run 'tts' action.",
                     "action.clip" : "Attempting to run 'createclip' action",
                     "action.addmarker" : "Attempting to run 'addmarker' action",
@@ -2679,7 +3110,7 @@ def get_version():
         with open(version_path, "r", encoding="utf-8") as f:
             return f.read().strip()
     except Exception as e:
-        print (e)
+        prompt ("error", "Missing version.txt")
         return "missing version.txt"
 
 __version__ = get_version()
