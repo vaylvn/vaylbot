@@ -1,4 +1,6 @@
-__version__ = "beta0069"
+
+
+
 
 ## Imports =========================================================================
 from twitchAPI.twitch import Twitch
@@ -29,6 +31,7 @@ from rich.markup import render
 
 console = Console()
 logs = [" "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "," "]
+
 
 
 from textwrap import wrap
@@ -2359,14 +2362,14 @@ def sanitize_path(path, base_path=None):
     except ValueError:
         return path  # Return the original if it cannot be made relative
 
-def logError(tag = None, additional_details = None):
-    # Display error prompt
+def logError(tag=None, additional_details=None):
+    """Handles error logging, file creation, and optional auto-reporting."""
     prompt("error", "Error Detected")
     base_path = os.getcwd()
 
     # Load reference for the error cause
     reference = error_reference.get(tag, "Undefined")
-    prompt("blank", "Cause: " + reference)
+    prompt("blank", f"Cause: {reference}")
 
     # Gather error details
     error_traceback = traceback.format_exc()
@@ -2375,36 +2378,41 @@ def logError(tag = None, additional_details = None):
     )
 
     log_details = {
-        "User": sv["channel"],
+        "User": sv.get("channel", "Unknown"),
         "Version": __version__,
         "Cause": reference,
         "Error Line": sanitized_traceback.splitlines()[-1] if sanitized_traceback else "N/A",
         "Stack Trace": sanitized_traceback
     }
 
+    # Ensure error directory exists
+    error_dir = os.path.join(base_path, "data", "logs", "errors")
+    os.makedirs(error_dir, exist_ok=True)
+
     # Write error to log file
-    timestamp = str(time.time())
-    log_file_path = os.path.join(base_path, "data", "logs", f"{timestamp}.txt")
-    with open(log_file_path, 'w', encoding="utf-8") as log_file:
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    log_file_path = os.path.join(error_dir, f"{timestamp}.txt")
+
+    with open(log_file_path, "w", encoding="utf-8") as log_file:
         log_file.write(f"User: {log_details['User']}\n")
         log_file.write(f"Version: {log_details['Version']}\n")
         log_file.write(f"Cause: {log_details['Cause']}\n")
-        log_file.write(f"Error Line: {log_details['Error Line']}\n")
-        
-        if additional_details is not None:
+        log_file.write(f"Error Line: {log_details['Error Line']}\n\n")
+
+        if additional_details:
             log_file.write("Additional Info:\n")
             for ad_line in additional_details:
-                log_file.write("- " + ad_line + "\n")
+                log_file.write(f"- {ad_line}\n")
             log_file.write("\n")
         else:
             log_file.write("Additional Info: None\n\n")
-        
+
         log_file.write("Stack Trace:\n")
         log_file.write(log_details["Stack Trace"])
 
     # Optionally send error to Discord
     try:
-        with open(os.path.join(vdir["configuration"], "configuration.yml"), 'r', encoding="utf-8") as file:
+        with open(os.path.join(vdir["configuration"], "configuration.yml"), "r", encoding="utf-8") as file:
             config = yaml.safe_load(file)
             if config.get("bug-auto-report", False):
                 webhook = DiscordWebhook(
@@ -2412,11 +2420,11 @@ def logError(tag = None, additional_details = None):
                     username="Bug Report",
                     avatar_url="https://i.ibb.co/ZHwjkms/icon.png"
                 )
-                with open(log_file_path, 'r', encoding="utf-8") as log_file:
+                with open(log_file_path, "r", encoding="utf-8") as log_file:
                     webhook.add_file(file=log_file.read(), filename=f"{timestamp}.txt")
                 webhook.execute()
     except Exception:
-        # Handle exceptions silently to avoid recursive error logging
+        # Avoid recursive logging if something breaks here
         pass
         
 
@@ -2456,7 +2464,7 @@ async def run():
     
 
     sv["twitch"] = await Twitch(sv["id"], sv["secret"])
-    auth = UserAuthenticator(sv["twitch"], USER_SCOPE, force_verify = True)
+    auth = UserAuthenticator(sv["twitch"], USER_SCOPE, force_verify = False)
     token, refresh = await auth.authenticate()
     await sv["twitch"].set_user_authentication(token, USER_SCOPE, refresh)
     
@@ -2578,11 +2586,8 @@ def build_log_panel():
     global logs
     # ✅ NEW: keep only the most recent N lines so old ones scroll off naturally
     MAX_VISIBLE = 18
-    if len(logs) > MAX_VISIBLE:
-        logs = logs[-MAX_VISIBLE:]
-
     table = Table(show_header=False, box=None, expand=True)
-    for line in logs:
+    for line in logs[-MAX_VISIBLE:]:
         table.add_row(Text.from_markup(line))
     return Panel(table, border_style="bright_black", expand=True)
 
@@ -2612,6 +2617,13 @@ def prompt(kind: str, message: str):
 
     # proper Rich markup
     line = f"[dim][{timestamp}][/dim] [{color}]{sym}[/] {message}"
+    plain = Text.from_markup(line).plain
+
+    try:
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(plain + "\n")
+    except Exception:
+        pass
     
     logs.append(line)
 
@@ -2718,6 +2730,24 @@ def set_console_size(cols=80, lines=20):
  
  
  
+ 
+def get_version():
+    try:
+        version_path = os.path.join(os.getcwd(), "configuration", "version.txt")
+        with open(version_path, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    except Exception as e:
+        print (e)
+        return "missing version.txt"
+
+__version__ = get_version()
+
+LOG_DIR = os.path.join(os.getcwd(), "data", "logs")
+os.makedirs(LOG_DIR, exist_ok=True)
+LOG_FILE = os.path.join(LOG_DIR, datetime.now().strftime("%Y-%m-%d_%H-%M-%S.txt"))
+ 
+ERROR_DIR = os.path.join(LOG_DIR, "errors")
+os.makedirs(ERROR_DIR, exist_ok=True)
  
 async def main():
     # run both concurrently
