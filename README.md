@@ -24,7 +24,7 @@ without handing control to a third-party service.
 [Download](https://github.com/vaylvn/vaylbot/releases/latest/download/Vayl.exe) 
 
 **Full setup guide, usage examples, and references:**  
-[Vayl Guide](guide/configuration.md) 
+[Vayl Guide](https://github.com/vaylvn/vaylbot/wiki) 
 
 **Join the community, share scripts, and follow development:**  
 [Join the Vayl Community Discord](https://discord.gg/R4Kyw4kMte) 
