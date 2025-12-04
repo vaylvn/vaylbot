@@ -1,4 +1,4 @@
-/*                   # ignore everything
-!/version.txt        # allow version tracking
-!/README.md          # allow main page
-!/guide/             # allow documentation
+/*
+!/version.txt
+!/README.md
+!/guide/
