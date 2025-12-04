@@ -1191,16 +1191,13 @@ def manageAlerts():
     
     
 ## Manage Alerts (async) ===========================================================
+
+
+
 async def manageAlertsAsync():
     global sv
     
-    
-    
-    
     while True:
-    
-        alert = {}
-        actions = []
         buffer = 1
         
         if sv["alerts"] and len(sv["alerts"]) > 0:
@@ -1236,9 +1233,8 @@ async def manageAlertsAsync():
                 except:
                     pass
             
-            if actions and alert:
-                await runActions(actions, alert)
-        
+            
+            await runActions(actions, alert)
         await asyncio.sleep(buffer)
         
             

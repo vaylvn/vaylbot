@@ -91,7 +91,7 @@ for path in ["conditionals","event","webhook"]:
 # secret = p8wl2zzuk3sgjmbdrlxe9l65xno8wk
 
 ## Bot Variables ===================================================================
-sv = { "id" : "xfc4596ekgo4ewkag6wn01hgs4hfbl", "secret" : "kvrz8tfupqfc14u2pn539oh1lyko6p",
+sv = { "id" : "xfc4596ekgo4ewkag6wn01hgs4hfbl", "secret" : "1jn1lmz947zggr4i6vvc8xffob6lz3",
        "version" : "", "twitch" : None, "streamer" : None, "channel" : None, "chat" : None, "live" : False,
        "alerts" : deque(), "actions" : [], "commands" : {}, "sfx" : {}, "phrases" : {}, "spoken" : [] }
 ## =================================================================================
@@ -2465,6 +2465,12 @@ async def run():
     
     handlers = [
         eventsub.listen_stream_online(sv["streamer"].id, on_live),
+        eventsub.listen_channel_cheer(sv["streamer"].id, on_bits_new),
+        eventsub.listen_channel_subscribe(sv["streamer"].id, on_sub),
+        eventsub.listen_hype_train_begin(sv["streamer"].id, on_hype_train),
+        eventsub.listen_channel_subscription_gift(sv["streamer"].id, on_giftsub),
+        eventsub.listen_channel_subscription_message(sv["streamer"].id, on_resub),
+        eventsub.listen_channel_follow_v2(sv["streamer"].id, sv["streamer"].id, on_follow),
         eventsub.listen_stream_offline(sv["streamer"].id, on_offline),
         eventsub.listen_channel_ad_break_begin(sv["streamer"].id, on_ad),
         eventsub.listen_channel_poll_begin(sv["streamer"].id, on_poll_start),
@@ -2472,15 +2478,11 @@ async def run():
         eventsub.listen_channel_prediction_begin(sv["streamer"].id, on_prediction_start),
         eventsub.listen_channel_prediction_lock(sv["streamer"].id, on_prediction_lock),
         eventsub.listen_channel_prediction_end(sv["streamer"].id, on_prediction_end),
-        eventsub.listen_hype_train_begin(sv["streamer"].id, on_hype_train),
+        
         eventsub.listen_channel_shoutout_create(sv["streamer"].id, sv["streamer"].id, on_shoutout_give),
         eventsub.listen_channel_points_custom_reward_redemption_add(sv["streamer"].id, on_redeem_new),
         eventsub.listen_channel_points_custom_reward_redemption_update(sv["streamer"].id, on_redeem_update),
-        eventsub.listen_channel_cheer(sv["streamer"].id, on_bits_new),
-        eventsub.listen_channel_subscribe(sv["streamer"].id, on_sub),
-        eventsub.listen_channel_subscription_gift(sv["streamer"].id, on_giftsub),
-        eventsub.listen_channel_subscription_message(sv["streamer"].id, on_resub),
-        eventsub.listen_channel_follow_v2(sv["streamer"].id, sv["streamer"].id, on_follow),
+
     ]
     await asyncio.gather(*handlers)
         
