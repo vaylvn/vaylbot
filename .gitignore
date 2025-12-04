@@ -1,14 +1,4 @@
-
-/_archive
-/_misc
-/_zip
-/configuration
-/data
-/build
-/dist
-*.spec
-*.bat
-_vresources/*
-!_vresources/version.txt
-
-
+/*                   # ignore everything
+!/version.txt        # allow version tracking
+!/README.md          # allow main page
+!/guide/             # allow documentation
