@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, date
 from collections import OrderedDict
 from twitchAPI.helper import first
 from playsound3 import playsound
-
+from pathlib import Path
 
 
 from colorama import Fore, Back, Style, init
@@ -166,6 +166,46 @@ USER_SCOPE = list(AuthScope)
 
 
 ## =================================================================================
+
+
+
+
+
+
+def get_internal_version():
+    base = Path(getattr(sys, "_MEIPASS", os.getcwd()))
+    version_file = base / "_vresources" / "version.txt"
+    return version_file.read_text().strip() if version_file.exists() else None
+
+_VERSION = get_internal_version()
+
+
+
+def get_remote_version():
+    try:
+        url = "https://raw.githubusercontent.com/<YOUR_USER>/<YOUR_REPO>/main/_vresources/version.txt"
+        return requests.get(url, timeout=3).text.strip()
+    except:
+        return None
+
+def check_version():
+    remote = get_remote_version()
+    local = VERSION_LOCAL
+
+    if not remote or not local:
+        print("[VERSION] Could not retrieve version info.")
+        return
+
+    if remote != local:
+        print(f"⚠ Update Available [{local} → {remote}]")
+        # later → replace with popup, UI alert, tray message, OBS overlay, etc.
+    else:
+        print(f"[VERSION] Up-to-date ({local})")
+
+check_version()
+
+
+
 
 
 
