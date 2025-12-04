@@ -1,4 +1,0 @@
-enabled: true
-buffer: 0
-actions:
-- webhook ; streamonline

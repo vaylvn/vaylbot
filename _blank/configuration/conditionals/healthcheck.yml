@@ -1,4 +1,0 @@
-condition: '[counter:health] < 20 and [text:status] == "paralysed"'
-true:
-- chat ; Player is on low health AND paralysed!
-false: []     
