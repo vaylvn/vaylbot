@@ -21,7 +21,7 @@ without handing control to a third-party service.
 
 ## Where to go?
 **Download the latest version here:**  
-[DOWNLOAD](https://github.com/vaylvn/vaylbot/releases/latest/download/Vayl.zip) 
+[Download](https://github.com/vaylvn/vaylbot/releases/latest/download/Vayl.zip) 
 
 **Full setup guide, usage examples, and references:**  
 [Vayl Guide](guide/configuration.md) 
