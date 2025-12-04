@@ -8,4 +8,7 @@
 /dist
 *.spec
 *.bat
+_vresources/*
+!_vresources/version.txt
+
 
