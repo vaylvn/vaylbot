@@ -13,7 +13,7 @@ from collections import OrderedDict
 from twitchAPI.helper import first
 from playsound3 import playsound
 from pathlib import Path
-
+import shutil
 
 from colorama import Fore, Back, Style, init
 init(strip=False, convert=True, autoreset=True)
@@ -170,40 +170,28 @@ USER_SCOPE = list(AuthScope)
 
 
 
+def buildDirectories():
+    exe_root = Path(getattr(sys, "_MEIPASS", os.getcwd()))
+    blank = exe_root / "_blank"      # internal template
+    target_root = Path(os.getcwd())  # user's real runtime location
 
-
-def get_internal_version():
-    base = Path(getattr(sys, "_MEIPASS", os.getcwd()))
-    version_file = base / "_vresources" / "version.txt"
-    return version_file.read_text().strip() if version_file.exists() else None
-
-_VERSION = get_internal_version()
-
-
-
-def get_remote_version():
-    try:
-        url = "https://raw.githubusercontent.com/<YOUR_USER>/<YOUR_REPO>/main/_vresources/version.txt"
-        return requests.get(url, timeout=3).text.strip()
-    except:
-        return None
-
-def check_version():
-    remote = get_remote_version()
-    local = VERSION_LOCAL
-
-    if not remote or not local:
-        print("[VERSION] Could not retrieve version info.")
+    if not blank.exists():
+        print("[BLANK] No embedded template found — skipping")
         return
 
-    if remote != local:
-        print(f"⚠ Update Available [{local} → {remote}]")
-        # later → replace with popup, UI alert, tray message, OBS overlay, etc.
-    else:
-        print(f"[VERSION] Up-to-date ({local})")
+    # Iterate through every file and folder INSIDE _blank, not the folder itself
+    for item in blank.rglob("*"):
+        relative = item.relative_to(blank)       # THIS is why _blank is not recreated
+        target = target_root / relative          # flattened into working dir
 
-check_version()
+        if item.is_dir():
+            target.mkdir(parents=True, exist_ok=True)
+            continue
 
+        if not target.exists():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(item, target)
+            print(f"[BLANK] Added missing file: {relative}")
 
 
 
@@ -2608,7 +2596,8 @@ async def run():
     print ("• Launching Dashboard")
     print ("  You may minimize this window...")
     
-    
+    buildDirectories()
+
 
 
 
