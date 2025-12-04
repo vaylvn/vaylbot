@@ -1,6 +1,0 @@
-redeem:
-  testing:
-    queue: true
-    buffer: 5
-    actions:
-    - chat ; 'testing' redeem has been redeemed!

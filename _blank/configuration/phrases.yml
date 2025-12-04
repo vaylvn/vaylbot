@@ -1,6 +1,0 @@
-phrase:
-    ^:
-        type: matches
-        cooldown: 0
-        actions:
-        - chat ; ^
